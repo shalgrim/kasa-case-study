@@ -3,3 +3,17 @@
 /Example_Review_Comparison.csv
 /Example_Review_Comparison.xlsx
 /kasa-dir-in-jobs-repo
+
+# Backend
+backend/.venv/
+backend/dev.db
+backend/__pycache__/
+backend/app/__pycache__/
+**/__pycache__/
+*.pyc
+.env
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+/.DS_Store
