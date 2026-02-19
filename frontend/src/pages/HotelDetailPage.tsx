@@ -75,7 +75,7 @@ export default function HotelDetailPage() {
     if (!window.confirm(`Delete "${hotel?.name}"? This cannot be undone.`)) return;
     setDeleting(true);
     try {
-      await client.delete(`/hotels/${id}`);
+      await client.delete(`/hotels/${id}?confirm=true`);
       navigate('/hotels');
     } catch {
       alert('Failed to delete hotel.');

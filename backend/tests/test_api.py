@@ -376,7 +376,7 @@ def test_delete_hotel(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     target_id = hotel_ids[0]
 
-    resp = client.delete(f"/api/hotels/{target_id}", headers=headers)
+    resp = client.delete(f"/api/hotels/{target_id}?confirm=true", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["deleted"] is True
 
@@ -401,7 +401,7 @@ def test_delete_hotel_cleans_up_group_membership(client, auth_token):
     group_id = resp.json()["id"]
 
     # Delete one hotel
-    client.delete(f"/api/hotels/{hotel_ids[0]}", headers=headers)
+    client.delete(f"/api/hotels/{hotel_ids[0]}?confirm=true", headers=headers)
 
     # Group still exists but has fewer members
     resp = client.get(f"/api/groups/{group_id}", headers=headers)
@@ -411,8 +411,25 @@ def test_delete_hotel_cleans_up_group_membership(client, auth_token):
 
 def test_delete_hotel_not_found(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
-    resp = client.delete("/api/hotels/99999", headers=headers)
+    resp = client.delete("/api/hotels/99999?confirm=true", headers=headers)
     assert resp.status_code == 404
+
+
+def test_delete_hotel_requires_confirmation(client, auth_token):
+    """DELETE without ?confirm=true should be rejected."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    client.post("/api/hotels", json={"name": "Don't Delete Me"}, headers=headers)
+    resp = client.get("/api/hotels", headers=headers)
+    hotel_id = resp.json()["items"][0]["id"]
+
+    # Without confirm param → 400
+    resp = client.delete(f"/api/hotels/{hotel_id}", headers=headers)
+    assert resp.status_code == 400
+
+    # With confirm=true → 200
+    resp = client.delete(f"/api/hotels/{hotel_id}?confirm=true", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] is True
 
 
 # ---- Phase 6: Create Hotel (manual) ----
