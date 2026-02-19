@@ -2,14 +2,14 @@
 
 ## Current State (for future Claude sessions)
 
-**Phase 3 is code-complete but not yet verified live.** The frontend MVP has been built and compiles cleanly. The next step is:
-1. Commit the staged frontend changes (already staged in git)
-2. Push to GitHub (user pushes manually to save tokens)
-3. Vercel auto-deploys the frontend
-4. Verify live: register a user, upload the CSV, check the hotel list and detail pages
-5. Only then mark Phase 3 as DONE and update this file
+**Phase 3 is DONE — verified live.** Next up is Phase 4 (Groups + Export).
 
-**The live Render database currently has 422 hotels from a test CSV import.** We plan to add an admin reset endpoint in Phase 5 to clean this up. For now it's fine — the frontend will display this data.
+**The live Render database has 422 hotels including junk summary/aggregate rows** (e.g., "AC" with City="4" State="2%", "Albuquerque" with City="1" State="0%"). These came from summary rows in the original CSV (`Example_Review_Comparison.csv`). A clean CSV (`hotel_rows_to_import.csv`) has been created with only real hotel rows. Phase 5's admin reset endpoint will let us wipe the DB and re-import with the clean file.
+
+**Known issues to fix later:**
+- "Needs Attention" dashboard card shows hotels with no review data (weighted avg 0) instead of genuinely low-scoring hotels → Phase 7
+- CSV upload reports "426 rows imported" but hotel count unchanged (upsert — count is misleading) → Phase 8
+- CORS required setting `FRONTEND_URL` env var on Render (no trailing slash) — fixed during verification
 
 **Important conventions** (see also CLAUDE.md):
 - User pushes to GitHub manually (don't use `git push`)
@@ -32,15 +32,19 @@
    - 10 unit tests passing (pytest): auth flow, CSV import, scoring normalization, weighted averages, hotel CRUD
    - Verified live on Render: 422 hotels imported, Sea Crest weighted avg = 7.58 (correct)
    - Bugs found & fixed: passlib→bcrypt (Python 3.14 compat), JWT sub must be string, pydantic v2 deprecations
-3. **Frontend MVP** — Auth pages, dashboard, hotel list/detail with charts — **CODE COMPLETE, NEEDS LIVE VERIFICATION**
+3. ~~**Frontend MVP** — Auth pages, dashboard, hotel list/detail with charts~~ **DONE**
    - Login/register with JWT, protected routes
    - Dashboard: summary stats, CSV upload button
    - Hotel list: sortable, searchable, color-coded scores (green >=8, yellow 6-8, red <6), CSV export
    - Hotel detail: score cards, bar chart + radar chart (recharts), snapshot history, live collection button
    - Groups placeholder (links to /groups, shows "coming in Phase 4")
+   - Verified live: register, hotel list, search/filter, Sea Crest detail page (scores, charts, history all correct)
+   - Bug found & fixed: CORS preflight failing (FRONTEND_URL env var on Render needed to be set without trailing slash)
 4. **Groups + Export** — Group CRUD API + UI, CSV export (backend endpoints already exist)
-5. **Live Data Collection + Admin** — SerpAPI (Google), TripAdvisor Content API; responsible scraping for Booking/Expedia if free APIs unavailable. Admin reset endpoint to wipe hotel/snapshot data
+5. **Live Data Collection + Admin** — SerpAPI (Google), TripAdvisor Content API; responsible scraping for Booking/Expedia if free APIs unavailable. Admin reset endpoint to wipe hotel/snapshot data and re-import from clean CSV
 6. **Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs
+7. **Cleanup** — Fix "Needs Attention" card to exclude hotels with no review data (weighted avg 0); remove CSV upload button from dashboard UI
+8. **CSV Upload Polish** (stretch, likely won't reach) — Fix misleading "imported" count to distinguish new vs updated hotels; improve error handling for bad CSV files
 
 ### Cost philosophy
 Prefer free options. Consider responsible scraping if paid APIs are needed. Keep costs well under budget.

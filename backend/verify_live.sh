@@ -42,7 +42,7 @@ if [ -f "$CSV_FILE" ]; then
   echo "OK ($COUNT hotels)"
 
   echo -n "Scoring check (Sea Crest)... "
-  curl -sf "$BASE_URL/api/hotels" -H "$AUTH" | python3 -c "
+  SEA_CREST_ID=$(curl -sf "$BASE_URL/api/hotels" -H "$AUTH" | python3 -c "
 import sys, json
 hotels = json.load(sys.stdin)
 sc = next((h for h in hotels if 'Sea Crest' in h['name']), None)
@@ -52,8 +52,36 @@ assert s['google_normalized'] == 8.0, f'Google norm: {s[\"google_normalized\"]}'
 assert s['booking_normalized'] == 7.3, f'Booking norm: {s[\"booking_normalized\"]}'
 assert s['tripadvisor_normalized'] == 7.1, f'TA norm: {s[\"tripadvisor_normalized\"]}'
 assert 7.5 <= s['weighted_average'] <= 7.7, f'WA: {s[\"weighted_average\"]}'
-print('OK (normalized scores and weighted average correct)')
+print(sc['id'])
+")
+  echo "OK (ID=$SEA_CREST_ID, normalized scores and weighted average correct)"
+
+  echo -n "Hotel detail endpoint... "
+  curl -sf "$BASE_URL/api/hotels/$SEA_CREST_ID" -H "$AUTH" | python3 -c "
+import sys, json
+h = json.load(sys.stdin)
+assert h['name'] and 'Sea Crest' in h['name'], f'Wrong hotel: {h[\"name\"]}'
+assert h['latest_snapshot'] is not None, 'No snapshot on detail'
+print('OK (' + h['name'] + ')')
 "
+
+  echo -n "Hotel history endpoint... "
+  curl -sf "$BASE_URL/api/hotels/$SEA_CREST_ID/history" -H "$AUTH" | python3 -c "
+import sys, json
+snapshots = json.load(sys.stdin)
+assert isinstance(snapshots, list), f'Expected list, got {type(snapshots)}'
+assert len(snapshots) >= 1, f'Expected >=1 snapshot, got {len(snapshots)}'
+print('OK (' + str(len(snapshots)) + ' snapshots)')
+"
+
+  echo -n "CSV export endpoint... "
+  EXPORT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/export/hotels" -H "$AUTH")
+  if [ "$EXPORT_STATUS" = "200" ]; then
+    echo "OK (HTTP 200)"
+  else
+    echo "FAIL (HTTP $EXPORT_STATUS)"
+    exit 1
+  fi
 else
   echo "Skipping CSV tests (file not found: $CSV_FILE)"
 fi

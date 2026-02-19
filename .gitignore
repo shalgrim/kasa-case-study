@@ -18,3 +18,4 @@ frontend/node_modules/
 frontend/dist/
 /.DS_Store
 *.db
+/hotel_rows_to_import.csv
