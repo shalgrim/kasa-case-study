@@ -15,6 +15,11 @@ from ..services.scoring import compute_scores
 router = APIRouter()
 
 
+def _escape_like(term: str) -> str:
+    """Escape %, _, and \\ so they are treated as literals in LIKE/ILIKE."""
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class HotelCreate(BaseModel):
     name: str
     city: Optional[str] = None
@@ -110,10 +115,11 @@ def list_hotels(
 ):
     query = db.query(Hotel)
     if search:
+        term = f"%{_escape_like(search)}%"
         query = query.filter(
-            Hotel.name.ilike(f"%{search}%")
-            | Hotel.city.ilike(f"%{search}%")
-            | Hotel.state.ilike(f"%{search}%")
+            Hotel.name.ilike(term)
+            | Hotel.city.ilike(term)
+            | Hotel.state.ilike(term)
         )
 
     # Sort
