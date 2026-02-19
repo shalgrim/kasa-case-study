@@ -7,8 +7,12 @@ See the full plan in the Claude session transcript. Key phases:
 1. ~~**Deploy the Skeleton** — Render (backend + Postgres), Vercel (frontend). Pave the deploy path before adding real functionality~~ **DONE**
    - Backend: https://kasa-case-study.onrender.com/api/health
    - Frontend: https://kasa-case-study.vercel.app
-2. **Backend Core + CSV Import** — Models, CSV parsing, scoring, auth, hotel CRUD ← **UP NEXT**
-3. **Frontend MVP** — Auth pages, dashboard, hotel list/detail with charts
+2. ~~**Backend Core + CSV Import** — Models, CSV parsing, scoring, auth, hotel CRUD~~ **DONE**
+   - 10 unit tests passing (pytest): auth flow, CSV import, scoring normalization, weighted averages, hotel CRUD
+   - Verified live on Render: 422 hotels imported, Sea Crest weighted avg = 7.58 (correct)
+   - Bugs found & fixed: passlib→bcrypt (Python 3.14 compat), JWT sub must be string, pydantic v2 deprecations
+   - Reusable smoke test: `backend/verify_live.sh`
+3. **Frontend MVP** — Auth pages, dashboard, hotel list/detail with charts ← **UP NEXT**
 4. **Groups + Export** — Group CRUD, group UI, CSV export
 5. **Live Data Collection** — SerpAPI (Google), TripAdvisor Content API; consider responsible scraping for Booking/Expedia if free API options aren't available
 6. **Documentation** — README.md
