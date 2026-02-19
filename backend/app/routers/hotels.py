@@ -105,11 +105,13 @@ def import_csv_endpoint(
     return {"imported": count}
 
 
-@router.get("", response_model=list[HotelDetail])
+@router.get("")
 def list_hotels(
     search: Optional[str] = Query(None),
     sort_by: Optional[str] = Query("name"),
     sort_dir: Optional[str] = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -130,7 +132,8 @@ def list_hotels(
     else:
         query = query.order_by(sort_column.asc())
 
-    hotels = query.all()
+    total = query.count()
+    hotels = query.offset((page - 1) * page_size).limit(page_size).all()
     results = []
     for hotel in hotels:
         latest = hotel.snapshots[0] if hotel.snapshots else None
@@ -156,7 +159,7 @@ def list_hotels(
                 weighted_average=latest.weighted_average,
             )
         results.append(detail)
-    return results
+    return {"items": results, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/{hotel_id}", response_model=HotelDetail)

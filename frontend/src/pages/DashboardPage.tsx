@@ -20,8 +20,8 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      const resp = await client.get('/hotels');
-      const hotels = resp.data;
+      const resp = await client.get('/hotels', { params: { page_size: 500 } });
+      const hotels = resp.data.items;
       const withScores = hotels.filter((h: any) => h.latest_snapshot?.weighted_average != null);
       const scores = withScores.map((h: any) => ({
         name: h.name,

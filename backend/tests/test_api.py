@@ -57,9 +57,9 @@ def test_csv_import(client, auth_token):
     data = resp.json()
     assert data["imported"] > 90
 
-    resp = client.get("/api/hotels", headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
     assert resp.status_code == 200
-    hotels = resp.json()
+    hotels = resp.json()["items"]
     assert len(hotels) > 90
 
     hotel_with_scores = next((h for h in hotels if h["latest_snapshot"] is not None), None)
@@ -79,8 +79,8 @@ def test_csv_import_scoring(client, auth_token):
             headers={"Authorization": f"Bearer {auth_token}"},
         )
 
-    resp = client.get("/api/hotels", headers={"Authorization": f"Bearer {auth_token}"})
-    hotels = resp.json()
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    hotels = resp.json()["items"]
 
     # Sea Crest Beach Hotel — CSV row 3:
     # Google: 4.00 (1596), Booking: 7.30 (498), Expedia: 7.80 (1001), TripAdvisor: 3.55 (1607)
@@ -120,8 +120,8 @@ def test_hotel_detail(client, auth_token):
             headers={"Authorization": f"Bearer {auth_token}"},
         )
 
-    resp = client.get("/api/hotels", headers={"Authorization": f"Bearer {auth_token}"})
-    hotel_id = resp.json()[0]["id"]
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    hotel_id = resp.json()["items"][0]["id"]
 
     resp = client.get(f"/api/hotels/{hotel_id}", headers={"Authorization": f"Bearer {auth_token}"})
     assert resp.status_code == 200
@@ -139,8 +139,8 @@ def test_hotel_history(client, auth_token):
             headers={"Authorization": f"Bearer {auth_token}"},
         )
 
-    resp = client.get("/api/hotels", headers={"Authorization": f"Bearer {auth_token}"})
-    hotel_id = resp.json()[0]["id"]
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    hotel_id = resp.json()["items"][0]["id"]
 
     resp = client.get(f"/api/hotels/{hotel_id}/history", headers={"Authorization": f"Bearer {auth_token}"})
     assert resp.status_code == 200
@@ -159,8 +159,8 @@ def _import_csv(client, auth_token):
             files={"file": ("reviews.csv", f, "text/csv")},
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-    resp = client.get("/api/hotels", headers={"Authorization": f"Bearer {auth_token}"})
-    return [h["id"] for h in resp.json()]
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    return [h["id"] for h in resp.json()["items"]]
 
 
 def test_create_group(client, auth_token):
@@ -353,8 +353,8 @@ def test_admin_reset(client, auth_token):
     _import_csv(client, auth_token)
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.get("/api/hotels", headers=headers)
-    old_count = len(resp.json())
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers=headers)
+    old_count = resp.json()["total"]
     assert old_count > 0
 
     # Reset
@@ -365,8 +365,8 @@ def test_admin_reset(client, auth_token):
     assert data["imported"] > 0
 
     # Verify new hotels exist
-    resp = client.get("/api/hotels", headers=headers)
-    new_count = len(resp.json())
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers=headers)
+    new_count = resp.json()["total"]
     assert new_count == data["imported"]
 
 
@@ -385,8 +385,8 @@ def test_delete_hotel(client, auth_token):
     assert resp.status_code == 404
 
     # Others still exist
-    resp = client.get("/api/hotels", headers=headers)
-    remaining_ids = [h["id"] for h in resp.json()]
+    resp = client.get("/api/hotels", params={"page_size": 500}, headers=headers)
+    remaining_ids = [h["id"] for h in resp.json()["items"]]
     assert target_id not in remaining_ids
     assert len(remaining_ids) == len(hotel_ids) - 1
 
@@ -434,7 +434,7 @@ def test_create_hotel(client, auth_token):
 
     # Verify it appears in the list
     resp = client.get("/api/hotels", headers=headers)
-    names = [h["name"] for h in resp.json()]
+    names = [h["name"] for h in resp.json()["items"]]
     assert "Test Hotel" in names
 
 
@@ -454,7 +454,7 @@ def test_search_escapes_like_wildcards(client, auth_token):
 
     resp = client.get("/api/hotels", params={"search": "%"}, headers=headers)
     assert resp.status_code == 200
-    names = [h["name"] for h in resp.json()]
+    names = [h["name"] for h in resp.json()["items"]]
     assert "100% Inn" in names
     assert "Normal Hotel" not in names
 
@@ -467,6 +467,34 @@ def test_sort_by_invalid_field_falls_back(client, auth_token):
 
     resp = client.get("/api/hotels", params={"sort_by": "snapshots"}, headers=headers)
     assert resp.status_code == 200
-    names = [h["name"] for h in resp.json()]
+    names = [h["name"] for h in resp.json()["items"]]
     # Should fall back to name asc
     assert names == ["Alpha Hotel", "Bravo Hotel"]
+
+
+def test_pagination(client, auth_token):
+    """Paginated response returns correct page metadata and slices."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    for i in range(5):
+        client.post("/api/hotels", json={"name": f"Hotel {i}"}, headers=headers)
+
+    # Page 1 with page_size=2
+    resp = client.get("/api/hotels", params={"page": 1, "page_size": 2}, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 5
+    assert data["page"] == 1
+    assert data["page_size"] == 2
+    assert len(data["items"]) == 2
+
+    # Page 3 with page_size=2 should have 1 item
+    resp = client.get("/api/hotels", params={"page": 3, "page_size": 2}, headers=headers)
+    data = resp.json()
+    assert len(data["items"]) == 1
+    assert data["total"] == 5
+
+    # Page beyond range returns empty items
+    resp = client.get("/api/hotels", params={"page": 10, "page_size": 2}, headers=headers)
+    data = resp.json()
+    assert len(data["items"]) == 0
+    assert data["total"] == 5

@@ -29,7 +29,7 @@ export default function GroupsPage() {
 
   const openForm = () => {
     if (hotels.length === 0) {
-      client.get('/hotels').then(r => setHotels(r.data));
+      client.get('/hotels', { params: { page_size: 500 } }).then(r => setHotels(r.data.items));
     }
     setShowForm(true);
   };

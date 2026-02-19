@@ -62,7 +62,7 @@ export default function GroupDetailPage() {
     setEditName(group.name);
     setSelectedIds(new Set(group.hotels.map(h => h.id)));
     if (allHotels.length === 0) {
-      client.get('/hotels').then(r => setAllHotels(r.data));
+      client.get('/hotels', { params: { page_size: 500 } }).then(r => setAllHotels(r.data.items));
     }
     setEditing(true);
   };

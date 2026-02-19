@@ -47,15 +47,19 @@ export default function HotelListPage() {
   const [formData, setFormData] = useState({ name: '', city: '', state: '', website: '', booking_name: '', expedia_name: '', tripadvisor_name: '' });
   const [showOta, setShowOta] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 50;
 
-  const loadHotels = () => {
-    client.get('/hotels').then(resp => {
-      setHotels(resp.data);
+  const loadHotels = (p = page) => {
+    client.get('/hotels', { params: { page: p, page_size: pageSize } }).then(resp => {
+      setHotels(resp.data.items);
+      setTotal(resp.data.total);
       setLoading(false);
     });
   };
 
-  useEffect(() => { loadHotels(); }, []);
+  useEffect(() => { loadHotels(page); }, [page]);
 
   const handleCreate = async () => {
     if (!formData.name.trim()) return;
@@ -226,6 +230,22 @@ export default function HotelListPage() {
           </tbody>
         </table>
       </div>
+
+      {total > pageSize && (
+        <div className="flex justify-between items-center mt-4">
+          <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}
+            className="px-4 py-2 rounded border text-sm hover:bg-gray-50 disabled:opacity-50">
+            ← Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {page} of {Math.ceil(total / pageSize)}
+          </span>
+          <button onClick={() => setPage(p => p + 1)} disabled={page * pageSize >= total}
+            className="px-4 py-2 rounded border text-sm hover:bg-gray-50 disabled:opacity-50">
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
