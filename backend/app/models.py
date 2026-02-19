@@ -31,7 +31,7 @@ class Hotel(Base):
     expedia_name = Column(String)
     tripadvisor_name = Column(String)
 
-    snapshots = relationship("ReviewSnapshot", back_populates="hotel", order_by="ReviewSnapshot.collected_at.desc()")
+    snapshots = relationship("ReviewSnapshot", back_populates="hotel", order_by="ReviewSnapshot.collected_at.desc()", cascade="all, delete-orphan")
     group_memberships = relationship("HotelGroupMembership", back_populates="hotel")
 
 

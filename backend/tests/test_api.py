@@ -1,4 +1,6 @@
 import os
+from unittest.mock import patch
+
 import pytest
 from tests.conftest import CSV_PATH
 
@@ -293,4 +295,121 @@ def test_group_user_isolation(client):
 
     # User B can't delete it
     resp = client.delete(f"/api/groups/{group_id}", headers=headers_b)
+    assert resp.status_code == 404
+
+
+# ---- Phase 5: Collection (mocked), Admin, Delete ----
+
+CLEAN_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "hotel_rows_to_import.csv")
+
+
+def test_collect_hotel_mocked(client, auth_token):
+    """Collect live reviews with mocked external APIs."""
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    hotel_id = hotel_ids[0]
+
+    with patch("app.routers.reviews.collect_google_reviews", return_value=(4.5, 200)), \
+         patch("app.routers.reviews.collect_tripadvisor_reviews", return_value=(4.0, 150)):
+        resp = client.post(f"/api/reviews/hotels/{hotel_id}/collect", headers=headers)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["snapshot_id"] is not None
+    assert data["weighted_average"] is not None
+
+    # Verify snapshot was created with correct normalized scores
+    resp = client.get(f"/api/hotels/{hotel_id}/history", headers=headers)
+    history = resp.json()
+    live_snap = next(s for s in history if s["source"] == "live")
+    assert live_snap["google_normalized"] == 9.0  # 4.5 * 2
+    assert live_snap["tripadvisor_normalized"] == 8.0  # 4.0 * 2
+    assert live_snap["google_count"] == 200
+    assert live_snap["tripadvisor_count"] == 150
+
+
+def test_collect_group_mocked(client, auth_token):
+    """Collect live reviews for a group with mocked APIs."""
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.post("/api/groups", json={"name": "Collect Group", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    group_id = resp.json()["id"]
+
+    with patch("app.routers.reviews.collect_google_reviews", return_value=(4.2, 100)), \
+         patch("app.routers.reviews.collect_tripadvisor_reviews", return_value=(3.8, 80)):
+        resp = client.post(f"/api/reviews/groups/{group_id}/collect", headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.json()["collected"] == 2
+
+
+def test_admin_reset(client, auth_token):
+    """Admin reset wipes data and re-imports from clean CSV."""
+    if not os.path.exists(CLEAN_CSV_PATH):
+        pytest.skip("Clean CSV file not found")
+
+    # Import original CSV first
+    _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.get("/api/hotels", headers=headers)
+    old_count = len(resp.json())
+    assert old_count > 0
+
+    # Reset
+    resp = client.post("/api/admin/reset", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["deleted_hotels"] == old_count
+    assert data["imported"] > 0
+
+    # Verify new hotels exist
+    resp = client.get("/api/hotels", headers=headers)
+    new_count = len(resp.json())
+    assert new_count == data["imported"]
+
+
+def test_delete_hotel(client, auth_token):
+    """Delete a hotel and verify it's gone but others remain."""
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    target_id = hotel_ids[0]
+
+    resp = client.delete(f"/api/hotels/{target_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] is True
+
+    # Verify gone
+    resp = client.get(f"/api/hotels/{target_id}", headers=headers)
+    assert resp.status_code == 404
+
+    # Others still exist
+    resp = client.get("/api/hotels", headers=headers)
+    remaining_ids = [h["id"] for h in resp.json()]
+    assert target_id not in remaining_ids
+    assert len(remaining_ids) == len(hotel_ids) - 1
+
+
+def test_delete_hotel_cleans_up_group_membership(client, auth_token):
+    """Deleting a hotel removes it from groups but group still exists."""
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    # Create group with 3 hotels
+    resp = client.post("/api/groups", json={"name": "Cleanup Group", "hotel_ids": hotel_ids[:3]}, headers=headers)
+    group_id = resp.json()["id"]
+
+    # Delete one hotel
+    client.delete(f"/api/hotels/{hotel_ids[0]}", headers=headers)
+
+    # Group still exists but has fewer members
+    resp = client.get(f"/api/groups/{group_id}", headers=headers)
+    assert resp.status_code == 200
+    assert len(resp.json()["hotels"]) == 2
+
+
+def test_delete_hotel_not_found(client, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    resp = client.delete("/api/hotels/99999", headers=headers)
     assert resp.status_code == 404

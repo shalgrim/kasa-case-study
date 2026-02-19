@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..models import Hotel, ReviewSnapshot, User
+from ..models import Hotel, HotelGroupMembership, ReviewSnapshot, User
 from ..services.csv_import import import_csv
 from ..services.scoring import compute_scores
 
@@ -148,6 +148,17 @@ def get_hotel(hotel_id: int, db: Session = Depends(get_db), user: User = Depends
             weighted_average=latest.weighted_average,
         )
     return detail
+
+
+@router.delete("/{hotel_id}")
+def delete_hotel(hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+    db.query(HotelGroupMembership).filter(HotelGroupMembership.hotel_id == hotel_id).delete()
+    db.delete(hotel)
+    db.commit()
+    return {"deleted": True}
 
 
 @router.get("/{hotel_id}/history", response_model=list[SnapshotOut])

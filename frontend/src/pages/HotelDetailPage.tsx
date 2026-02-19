@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import client from '../api/client';
 
@@ -43,10 +43,12 @@ function scoreColor(score: number | null): string {
 
 export default function HotelDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [history, setHistory] = useState<Snapshot[]>([]);
   const [collecting, setCollecting] = useState(false);
   const [collectMsg, setCollectMsg] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -66,6 +68,18 @@ export default function HotelDetailPage() {
       setCollectMsg('Collection failed (API keys may not be configured)');
     }
     setCollecting(false);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${hotel?.name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await client.delete(`/hotels/${id}`);
+      navigate('/hotels');
+    } catch {
+      alert('Failed to delete hotel.');
+      setDeleting(false);
+    }
   };
 
   if (!hotel) return <p className="text-gray-500">Loading...</p>;
@@ -104,6 +118,10 @@ export default function HotelDetailPage() {
         <button onClick={handleCollect} disabled={collecting}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm">
           {collecting ? 'Collecting...' : 'Collect Live Reviews'}
+        </button>
+        <button onClick={handleDelete} disabled={deleting}
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50 text-sm">
+          {deleting ? 'Deleting...' : 'Delete Hotel'}
         </button>
         {collectMsg && <span className="text-sm text-gray-600 self-center">{collectMsg}</span>}
       </div>
