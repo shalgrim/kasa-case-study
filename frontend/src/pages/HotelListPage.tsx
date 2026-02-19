@@ -43,13 +43,34 @@ export default function HotelListPage() {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ name: '', city: '', state: '', website: '', booking_name: '', expedia_name: '', tripadvisor_name: '' });
+  const [showOta, setShowOta] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
+  const loadHotels = () => {
     client.get('/hotels').then(resp => {
       setHotels(resp.data);
       setLoading(false);
     });
-  }, []);
+  };
+
+  useEffect(() => { loadHotels(); }, []);
+
+  const handleCreate = async () => {
+    if (!formData.name.trim()) return;
+    setCreating(true);
+    try {
+      await client.post('/hotels', formData);
+      setShowForm(false);
+      setFormData({ name: '', city: '', state: '', website: '', booking_name: '', expedia_name: '', tripadvisor_name: '' });
+      setShowOta(false);
+      loadHotels();
+    } catch {
+      alert('Failed to create hotel.');
+    }
+    setCreating(false);
+  };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -112,10 +133,54 @@ export default function HotelListPage() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Hotels ({sorted.length})</h2>
-        <button onClick={handleExport} className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm">
-          Export CSV
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowForm(f => !f)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+            {showForm ? 'Cancel' : 'Add Hotel'}
+          </button>
+          <button onClick={handleExport} className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm">
+            Export CSV
+          </button>
+        </div>
       </div>
+
+      {showForm && (
+        <div className="bg-white border rounded p-4 mb-4 shadow">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <input placeholder="Name *" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+              className="border rounded px-3 py-2" />
+            <input placeholder="City" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })}
+              className="border rounded px-3 py-2" />
+            <input placeholder="State" value={formData.state} onChange={e => setFormData({ ...formData, state: e.target.value })}
+              className="border rounded px-3 py-2" />
+          </div>
+          <input placeholder="Website" value={formData.website} onChange={e => setFormData({ ...formData, website: e.target.value })}
+            className="border rounded px-3 py-2 w-full mb-3" />
+          <div className="mb-3">
+            <button type="button" onClick={() => setShowOta(o => !o)} className="text-sm text-blue-600 hover:underline">
+              {showOta ? 'Hide' : 'Show'} OTA Names
+            </button>
+            {showOta && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <input placeholder="Booking Name" value={formData.booking_name} onChange={e => setFormData({ ...formData, booking_name: e.target.value })}
+                  className="border rounded px-3 py-2" />
+                <input placeholder="Expedia Name" value={formData.expedia_name} onChange={e => setFormData({ ...formData, expedia_name: e.target.value })}
+                  className="border rounded px-3 py-2" />
+                <input placeholder="TripAdvisor Name" value={formData.tripadvisor_name} onChange={e => setFormData({ ...formData, tripadvisor_name: e.target.value })}
+                  className="border rounded px-3 py-2" />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleCreate} disabled={creating || !formData.name.trim()}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm">
+              {creating ? 'Creating...' : 'Create'}
+            </button>
+            <button onClick={() => setShowForm(false)} className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <input
         type="text"

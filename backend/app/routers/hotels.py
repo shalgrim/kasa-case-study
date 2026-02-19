@@ -15,6 +15,16 @@ from ..services.scoring import compute_scores
 router = APIRouter()
 
 
+class HotelCreate(BaseModel):
+    name: str
+    city: Optional[str] = None
+    state: Optional[str] = None
+    website: Optional[str] = None
+    booking_name: Optional[str] = None
+    expedia_name: Optional[str] = None
+    tripadvisor_name: Optional[str] = None
+
+
 class HotelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,6 +36,7 @@ class HotelOut(BaseModel):
     kind: Optional[str] = None
     brand: Optional[str] = None
     parent: Optional[str] = None
+    website: Optional[str] = None
     booking_name: Optional[str] = None
     expedia_name: Optional[str] = None
     tripadvisor_name: Optional[str] = None
@@ -55,6 +66,27 @@ class SnapshotOut(BaseModel):
 
 class HotelDetail(HotelOut):
     latest_snapshot: Optional[SnapshotOut] = None
+
+
+@router.post("", response_model=HotelDetail)
+def create_hotel(
+    payload: HotelCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    hotel = Hotel(
+        name=payload.name,
+        city=payload.city,
+        state=payload.state,
+        website=payload.website,
+        booking_name=payload.booking_name,
+        expedia_name=payload.expedia_name,
+        tripadvisor_name=payload.tripadvisor_name,
+    )
+    db.add(hotel)
+    db.commit()
+    db.refresh(hotel)
+    return HotelDetail.model_validate(hotel)
 
 
 @router.post("/import-csv")

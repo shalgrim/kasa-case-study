@@ -413,3 +413,32 @@ def test_delete_hotel_not_found(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     resp = client.delete("/api/hotels/99999", headers=headers)
     assert resp.status_code == 404
+
+
+# ---- Phase 6: Create Hotel (manual) ----
+
+def test_create_hotel(client, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    resp = client.post(
+        "/api/hotels",
+        json={"name": "Test Hotel", "city": "Portland", "state": "OR", "website": "https://example.com"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "Test Hotel"
+    assert data["city"] == "Portland"
+    assert data["state"] == "OR"
+    assert data["website"] == "https://example.com"
+    assert data["latest_snapshot"] is None
+
+    # Verify it appears in the list
+    resp = client.get("/api/hotels", headers=headers)
+    names = [h["name"] for h in resp.json()]
+    assert "Test Hotel" in names
+
+
+def test_create_hotel_name_required(client, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    resp = client.post("/api/hotels", json={"city": "Portland"}, headers=headers)
+    assert resp.status_code == 422

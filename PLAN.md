@@ -52,7 +52,7 @@
    - 6 new tests (24 total): mocked collection (single + group), admin reset, hotel deletion, group membership cleanup
    - Booking/Expedia scraping deferred — no public APIs available; Google (SerpAPI) and TripAdvisor (Content API) collectors already implemented in Phase 2
 6. **Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs
-7. **Cleanup** — Fix "Needs Attention" card to exclude hotels with no review data (weighted avg 0); remove CSV upload button from dashboard UI; group CSV export filename should reflect group name; hotel detail page should show "Back to groups" breadcrumb when navigated from a group
+7. **Cleanup** — Fix "Needs Attention" card to exclude hotels with no review data (weighted avg 0); remove CSV upload button from dashboard UI; group CSV export filename should reflect group name; hotel detail page should show "Back to groups" breadcrumb when navigated from a group; add Admin Reset button to dashboard UI
 8. **CSV Upload Polish** (stretch, likely won't reach) — Fix misleading "imported" count to distinguish new vs updated hotels; improve error handling for bad CSV files
 
 ### Cost philosophy

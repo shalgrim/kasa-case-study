@@ -27,6 +27,7 @@ class Hotel(Base):
     kind = Column(String)
     brand = Column(String)
     parent = Column(String)
+    website = Column(String)
     booking_name = Column(String)
     expedia_name = Column(String)
     tripadvisor_name = Column(String)

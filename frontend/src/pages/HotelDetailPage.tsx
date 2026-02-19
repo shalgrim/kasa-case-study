@@ -31,6 +31,7 @@ interface Hotel {
   kind: string | null;
   brand: string | null;
   parent: string | null;
+  website: string | null;
   latest_snapshot: Snapshot | null;
 }
 
@@ -112,6 +113,12 @@ export default function HotelDetailPage() {
           {hotel.brand && ` · ${hotel.brand}`}
           {hotel.keys && ` · ${hotel.keys} keys`}
         </p>
+        {hotel.website && (
+          <a href={hotel.website} target="_blank" rel="noopener noreferrer"
+            className="text-blue-600 hover:underline text-sm">
+            {hotel.website}
+          </a>
+        )}
       </div>
 
       <div className="flex gap-2 mb-6">
