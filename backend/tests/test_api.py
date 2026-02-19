@@ -2,7 +2,8 @@ import os
 from unittest.mock import patch
 
 import pytest
-from tests.conftest import CSV_PATH, count_queries
+from app.models import User
+from tests.conftest import CSV_PATH, TestSession, count_queries
 
 
 def test_health(client):
@@ -344,10 +345,21 @@ def test_collect_group_mocked(client, auth_token):
     assert resp.json()["collected"] == 2
 
 
+def _promote_to_admin(email: str):
+    """Set is_admin=True for the user with the given email."""
+    db = TestSession()
+    user = db.query(User).filter(User.email == email).first()
+    user.is_admin = True
+    db.commit()
+    db.close()
+
+
 def test_admin_reset(client, auth_token):
     """Admin reset wipes data and re-imports from clean CSV."""
     if not os.path.exists(CLEAN_CSV_PATH):
         pytest.skip("Clean CSV file not found")
+
+    _promote_to_admin("test@example.com")
 
     # Import original CSV first
     _import_csv(client, auth_token)
@@ -531,3 +543,10 @@ def test_hotel_list_query_count(client, auth_token):
     # With joinedload: auth query + count query + hotel+snapshots JOIN = ~3 queries
     # Without joinedload it would be 1 (auth) + 1 (count) + 1 (hotels) + 10 (snapshots) = 13
     assert len(queries) <= 5, f"Expected ≤5 queries, got {len(queries)}"
+
+
+def test_admin_reset_requires_admin(client, auth_token):
+    """Non-admin user should get 403 on reset endpoint."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    resp = client.post("/api/admin/reset", headers=headers)
+    assert resp.status_code == 403

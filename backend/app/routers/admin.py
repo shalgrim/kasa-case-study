@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -15,6 +15,8 @@ CLEAN_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "hote
 
 @router.post("/reset")
 def admin_reset(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
     deleted_memberships = db.query(HotelGroupMembership).delete()
     deleted_snapshots = db.query(ReviewSnapshot).delete()
     deleted_hotels = db.query(Hotel).delete()
