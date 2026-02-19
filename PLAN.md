@@ -14,7 +14,7 @@ See the full plan in the Claude session transcript. Key phases:
    - Reusable smoke test: `backend/verify_live.sh`
 3. **Frontend MVP** — Auth pages, dashboard, hotel list/detail with charts ← **UP NEXT**
 4. **Groups + Export** — Group CRUD, group UI, CSV export
-5. **Live Data Collection** — SerpAPI (Google), TripAdvisor Content API; consider responsible scraping for Booking/Expedia if free API options aren't available
+5. **Live Data Collection + Admin** — SerpAPI (Google), TripAdvisor Content API; consider responsible scraping for Booking/Expedia if free API options aren't available. Also: admin reset endpoint to wipe hotel/snapshot data (useful for demos, cleaning up test imports)
 6. **Documentation** — README.md
 
 ### Cost philosophy
