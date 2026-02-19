@@ -3,9 +3,11 @@
 See the full plan in the Claude session transcript. Key phases:
 
 ## Phases
-0. **Scaffolding** — FastAPI + React + DB setup (hello world endpoints)
-1. **Deploy the Skeleton** — Render (backend + Postgres), Vercel (frontend). Pave the deploy path before adding real functionality
-2. **Backend Core + CSV Import** — Models, CSV parsing, scoring, auth, hotel CRUD
+0. ~~**Scaffolding** — FastAPI + React + DB setup (hello world endpoints)~~ **DONE**
+1. ~~**Deploy the Skeleton** — Render (backend + Postgres), Vercel (frontend). Pave the deploy path before adding real functionality~~ **DONE**
+   - Backend: https://kasa-case-study.onrender.com/api/health
+   - Frontend: https://kasa-case-study.vercel.app
+2. **Backend Core + CSV Import** — Models, CSV parsing, scoring, auth, hotel CRUD ← **UP NEXT**
 3. **Frontend MVP** — Auth pages, dashboard, hotel list/detail with charts
 4. **Groups + Export** — Group CRUD, group UI, CSV export
 5. **Live Data Collection** — SerpAPI (Google), TripAdvisor Content API; consider responsible scraping for Booking/Expedia if free API options aren't available
