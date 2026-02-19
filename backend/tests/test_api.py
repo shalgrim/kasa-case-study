@@ -2,7 +2,7 @@ import os
 from unittest.mock import patch
 
 import pytest
-from tests.conftest import CSV_PATH
+from tests.conftest import CSV_PATH, count_queries
 
 
 def test_health(client):
@@ -498,3 +498,19 @@ def test_pagination(client, auth_token):
     data = resp.json()
     assert len(data["items"]) == 0
     assert data["total"] == 5
+
+
+def test_hotel_list_query_count(client, auth_token):
+    """Listing hotels should not issue N+1 queries for snapshots."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    for i in range(10):
+        client.post("/api/hotels", json={"name": f"Hotel {i}"}, headers=headers)
+
+    with count_queries() as queries:
+        resp = client.get("/api/hotels", params={"page_size": 10}, headers=headers)
+
+    assert resp.status_code == 200
+    assert len(resp.json()["items"]) == 10
+    # With joinedload: auth query + count query + hotel+snapshots JOIN = ~3 queries
+    # Without joinedload it would be 1 (auth) + 1 (count) + 1 (hotels) + 10 (snapshots) = 13
+    assert len(queries) <= 5, f"Expected ≤5 queries, got {len(queries)}"

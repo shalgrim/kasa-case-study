@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..auth import get_current_user
 from ..database import get_db
@@ -115,7 +115,7 @@ def list_hotels(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    query = db.query(Hotel)
+    query = db.query(Hotel).options(joinedload(Hotel.snapshots))
     if search:
         term = f"%{_escape_like(search)}%"
         query = query.filter(
