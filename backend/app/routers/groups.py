@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -22,12 +22,11 @@ class GroupUpdate(BaseModel):
 
 
 class GroupOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     hotel_count: int
-
-    class Config:
-        from_attributes = True
 
 
 class GroupDetail(BaseModel):

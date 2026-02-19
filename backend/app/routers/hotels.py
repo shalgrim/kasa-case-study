@@ -3,7 +3,7 @@ import io
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -16,6 +16,8 @@ router = APIRouter()
 
 
 class HotelOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     city: Optional[str] = None
@@ -28,11 +30,10 @@ class HotelOut(BaseModel):
     expedia_name: Optional[str] = None
     tripadvisor_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 
 class SnapshotOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     hotel_id: int
     collected_at: str
@@ -50,9 +51,6 @@ class SnapshotOut(BaseModel):
     expedia_normalized: Optional[float] = None
     tripadvisor_normalized: Optional[float] = None
     weighted_average: Optional[float] = None
-
-    class Config:
-        from_attributes = True
 
 
 class HotelDetail(HotelOut):
