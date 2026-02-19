@@ -6,6 +6,8 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import HotelListPage from './pages/HotelListPage';
 import HotelDetailPage from './pages/HotelDetailPage';
+import GroupsPage from './pages/GroupsPage';
+import GroupDetailPage from './pages/GroupDetailPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
@@ -61,7 +63,8 @@ function App() {
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/hotels" element={<ProtectedRoute><HotelListPage /></ProtectedRoute>} />
               <Route path="/hotels/:id" element={<ProtectedRoute><HotelDetailPage /></ProtectedRoute>} />
-              <Route path="/groups" element={<ProtectedRoute><div className="text-gray-500">Groups coming in Phase 4.</div></ProtectedRoute>} />
+              <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+              <Route path="/groups/:id" element={<ProtectedRoute><GroupDetailPage /></ProtectedRoute>} />
               <Route path="/" element={<Navigate to="/dashboard" />} />
             </Routes>
           </main>

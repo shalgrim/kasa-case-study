@@ -143,3 +143,154 @@ def test_hotel_history(client, auth_token):
     resp = client.get(f"/api/hotels/{hotel_id}/history", headers={"Authorization": f"Bearer {auth_token}"})
     assert resp.status_code == 200
     assert len(resp.json()) >= 1
+
+
+# ---- Group CRUD tests ----
+
+def _import_csv(client, auth_token):
+    """Helper: import CSV and return list of hotel IDs."""
+    if not os.path.exists(CSV_PATH):
+        pytest.skip("CSV file not found")
+    with open(CSV_PATH, "rb") as f:
+        client.post(
+            "/api/hotels/import-csv",
+            files={"file": ("reviews.csv", f, "text/csv")},
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+    resp = client.get("/api/hotels", headers={"Authorization": f"Bearer {auth_token}"})
+    return [h["id"] for h in resp.json()]
+
+
+def test_create_group(client, auth_token):
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.post("/api/groups", json={"name": "Test Group", "hotel_ids": hotel_ids[:3]}, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "Test Group"
+    assert data["hotel_count"] == 3
+    assert "id" in data
+
+
+def test_list_groups(client, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    # Empty initially
+    resp = client.get("/api/groups", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+    # Create one, then list
+    hotel_ids = _import_csv(client, auth_token)
+    client.post("/api/groups", json={"name": "G1", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    client.post("/api/groups", json={"name": "G2", "hotel_ids": []}, headers=headers)
+
+    resp = client.get("/api/groups", headers=headers)
+    assert resp.status_code == 200
+    groups = resp.json()
+    assert len(groups) == 2
+    names = {g["name"] for g in groups}
+    assert names == {"G1", "G2"}
+
+
+def test_get_group_detail(client, auth_token):
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.post("/api/groups", json={"name": "Detail Group", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    group_id = resp.json()["id"]
+
+    resp = client.get(f"/api/groups/{group_id}", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "Detail Group"
+    assert len(data["hotels"]) == 2
+    # Each hotel should have score fields
+    h = data["hotels"][0]
+    assert "name" in h
+    assert "weighted_average" in h
+
+
+def test_update_group(client, auth_token):
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.post("/api/groups", json={"name": "Old Name", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    group_id = resp.json()["id"]
+
+    # Rename
+    resp = client.put(f"/api/groups/{group_id}", json={"name": "New Name"}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "New Name"
+    assert resp.json()["hotel_count"] == 2
+
+    # Change membership
+    resp = client.put(f"/api/groups/{group_id}", json={"hotel_ids": hotel_ids[:5]}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["hotel_count"] == 5
+
+
+def test_delete_group(client, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.post("/api/groups", json={"name": "To Delete", "hotel_ids": []}, headers=headers)
+    group_id = resp.json()["id"]
+
+    resp = client.delete(f"/api/groups/{group_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] is True
+
+    # Verify gone
+    resp = client.get(f"/api/groups/{group_id}", headers=headers)
+    assert resp.status_code == 404
+
+
+def test_export_hotels_csv(client, auth_token):
+    _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.get("/api/export/hotels", headers=headers)
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+    assert "Name" in resp.text  # header row
+
+
+def test_export_group_csv(client, auth_token):
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    resp = client.post("/api/groups", json={"name": "Export Group", "hotel_ids": hotel_ids[:3]}, headers=headers)
+    group_id = resp.json()["id"]
+
+    resp = client.get(f"/api/export/groups/{group_id}", headers=headers)
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+
+
+def test_group_user_isolation(client):
+    """User A's groups are invisible to User B."""
+    # Register two users
+    resp_a = client.post("/api/auth/register", json={"email": "a@test.com", "password": "pass123"})
+    token_a = resp_a.json()["access_token"]
+    resp_b = client.post("/api/auth/register", json={"email": "b@test.com", "password": "pass123"})
+    token_b = resp_b.json()["access_token"]
+
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # User A creates a group
+    resp = client.post("/api/groups", json={"name": "A's Group", "hotel_ids": []}, headers=headers_a)
+    group_id = resp.json()["id"]
+
+    # User B can't see it
+    resp = client.get("/api/groups", headers=headers_b)
+    assert resp.json() == []
+
+    # User B can't access it directly
+    resp = client.get(f"/api/groups/{group_id}", headers=headers_b)
+    assert resp.status_code == 404
+
+    # User B can't delete it
+    resp = client.delete(f"/api/groups/{group_id}", headers=headers_b)
+    assert resp.status_code == 404
