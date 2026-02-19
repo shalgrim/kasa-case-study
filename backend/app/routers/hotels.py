@@ -117,13 +117,14 @@ def list_hotels(
     if search:
         term = f"%{_escape_like(search)}%"
         query = query.filter(
-            Hotel.name.ilike(term)
-            | Hotel.city.ilike(term)
-            | Hotel.state.ilike(term)
+            Hotel.name.ilike(term, escape="\\")
+            | Hotel.city.ilike(term, escape="\\")
+            | Hotel.state.ilike(term, escape="\\")
         )
 
     # Sort
-    sort_column = getattr(Hotel, sort_by, Hotel.name)
+    ALLOWED_SORT_FIELDS = {"name", "city", "state", "keys", "kind", "brand", "parent"}
+    sort_column = getattr(Hotel, sort_by) if sort_by in ALLOWED_SORT_FIELDS else Hotel.name
     if sort_dir == "desc":
         query = query.order_by(sort_column.desc())
     else:

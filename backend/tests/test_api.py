@@ -442,3 +442,31 @@ def test_create_hotel_name_required(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     resp = client.post("/api/hotels", json={"city": "Portland"}, headers=headers)
     assert resp.status_code == 422
+
+
+# ---- Phase 7: Hardening tests ----
+
+def test_search_escapes_like_wildcards(client, auth_token):
+    """Searching for '%' should not match all hotels."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    client.post("/api/hotels", json={"name": "100% Inn"}, headers=headers)
+    client.post("/api/hotels", json={"name": "Normal Hotel"}, headers=headers)
+
+    resp = client.get("/api/hotels", params={"search": "%"}, headers=headers)
+    assert resp.status_code == 200
+    names = [h["name"] for h in resp.json()]
+    assert "100% Inn" in names
+    assert "Normal Hotel" not in names
+
+
+def test_sort_by_invalid_field_falls_back(client, auth_token):
+    """Invalid sort_by values should not error; fall back to name sort."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    client.post("/api/hotels", json={"name": "Bravo Hotel"}, headers=headers)
+    client.post("/api/hotels", json={"name": "Alpha Hotel"}, headers=headers)
+
+    resp = client.get("/api/hotels", params={"sort_by": "snapshots"}, headers=headers)
+    assert resp.status_code == 200
+    names = [h["name"] for h in resp.json()]
+    # Should fall back to name asc
+    assert names == ["Alpha Hotel", "Bravo Hotel"]
