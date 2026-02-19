@@ -68,6 +68,28 @@ class SnapshotOut(BaseModel):
     tripadvisor_normalized: Optional[float] = None
     weighted_average: Optional[float] = None
 
+    @classmethod
+    def from_model(cls, snapshot: "ReviewSnapshot") -> "SnapshotOut":
+        return cls(
+            id=snapshot.id,
+            hotel_id=snapshot.hotel_id,
+            collected_at=snapshot.collected_at.isoformat(),
+            source=snapshot.source,
+            google_score=snapshot.google_score,
+            google_count=snapshot.google_count,
+            booking_score=snapshot.booking_score,
+            booking_count=snapshot.booking_count,
+            expedia_score=snapshot.expedia_score,
+            expedia_count=snapshot.expedia_count,
+            tripadvisor_score=snapshot.tripadvisor_score,
+            tripadvisor_count=snapshot.tripadvisor_count,
+            google_normalized=snapshot.google_normalized,
+            booking_normalized=snapshot.booking_normalized,
+            expedia_normalized=snapshot.expedia_normalized,
+            tripadvisor_normalized=snapshot.tripadvisor_normalized,
+            weighted_average=snapshot.weighted_average,
+        )
+
 
 class HotelDetail(HotelOut):
     latest_snapshot: Optional[SnapshotOut] = None
@@ -139,25 +161,7 @@ def list_hotels(
         latest = hotel.snapshots[0] if hotel.snapshots else None
         detail = HotelDetail.model_validate(hotel)
         if latest:
-            detail.latest_snapshot = SnapshotOut(
-                id=latest.id,
-                hotel_id=latest.hotel_id,
-                collected_at=latest.collected_at.isoformat(),
-                source=latest.source,
-                google_score=latest.google_score,
-                google_count=latest.google_count,
-                booking_score=latest.booking_score,
-                booking_count=latest.booking_count,
-                expedia_score=latest.expedia_score,
-                expedia_count=latest.expedia_count,
-                tripadvisor_score=latest.tripadvisor_score,
-                tripadvisor_count=latest.tripadvisor_count,
-                google_normalized=latest.google_normalized,
-                booking_normalized=latest.booking_normalized,
-                expedia_normalized=latest.expedia_normalized,
-                tripadvisor_normalized=latest.tripadvisor_normalized,
-                weighted_average=latest.weighted_average,
-            )
+            detail.latest_snapshot = SnapshotOut.from_model(latest)
         results.append(detail)
     return {"items": results, "total": total, "page": page, "page_size": page_size}
 
@@ -170,25 +174,7 @@ def get_hotel(hotel_id: int, db: Session = Depends(get_db), user: User = Depends
     latest = hotel.snapshots[0] if hotel.snapshots else None
     detail = HotelDetail.model_validate(hotel)
     if latest:
-        detail.latest_snapshot = SnapshotOut(
-            id=latest.id,
-            hotel_id=latest.hotel_id,
-            collected_at=latest.collected_at.isoformat(),
-            source=latest.source,
-            google_score=latest.google_score,
-            google_count=latest.google_count,
-            booking_score=latest.booking_score,
-            booking_count=latest.booking_count,
-            expedia_score=latest.expedia_score,
-            expedia_count=latest.expedia_count,
-            tripadvisor_score=latest.tripadvisor_score,
-            tripadvisor_count=latest.tripadvisor_count,
-            google_normalized=latest.google_normalized,
-            booking_normalized=latest.booking_normalized,
-            expedia_normalized=latest.expedia_normalized,
-            tripadvisor_normalized=latest.tripadvisor_normalized,
-            weighted_average=latest.weighted_average,
-        )
+        detail.latest_snapshot = SnapshotOut.from_model(latest)
     return detail
 
 
@@ -213,25 +199,4 @@ def get_hotel_history(hotel_id: int, db: Session = Depends(get_db), user: User =
     hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
-    return [
-        SnapshotOut(
-            id=s.id,
-            hotel_id=s.hotel_id,
-            collected_at=s.collected_at.isoformat(),
-            source=s.source,
-            google_score=s.google_score,
-            google_count=s.google_count,
-            booking_score=s.booking_score,
-            booking_count=s.booking_count,
-            expedia_score=s.expedia_score,
-            expedia_count=s.expedia_count,
-            tripadvisor_score=s.tripadvisor_score,
-            tripadvisor_count=s.tripadvisor_count,
-            google_normalized=s.google_normalized,
-            booking_normalized=s.booking_normalized,
-            expedia_normalized=s.expedia_normalized,
-            tripadvisor_normalized=s.tripadvisor_normalized,
-            weighted_average=s.weighted_average,
-        )
-        for s in hotel.snapshots
-    ]
+    return [SnapshotOut.from_model(s) for s in hotel.snapshots]
