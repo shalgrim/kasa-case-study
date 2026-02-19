@@ -2,7 +2,7 @@
 
 ## Current State (for future Claude sessions)
 
-**Phase 3 is DONE — verified live.** Next up is Phase 4 (Groups + Export).
+**Phase 4 is DONE — verified locally.** Next up is Phase 5 (Live Data Collection + Admin).
 
 **The live Render database has 422 hotels including junk summary/aggregate rows** (e.g., "AC" with City="4" State="2%", "Albuquerque" with City="1" State="0%"). These came from summary rows in the original CSV (`Example_Review_Comparison.csv`). A clean CSV (`hotel_rows_to_import.csv`) has been created with only real hotel rows. Phase 5's admin reset endpoint will let us wipe the DB and re-import with the clean file.
 
@@ -40,10 +40,14 @@
    - Groups placeholder (links to /groups, shows "coming in Phase 4")
    - Verified live: register, hotel list, search/filter, Sea Crest detail page (scores, charts, history all correct)
    - Bug found & fixed: CORS preflight failing (FRONTEND_URL env var on Render needed to be set without trailing slash)
-4. **Groups + Export** — Group CRUD API + UI, CSV export (backend endpoints already exist)
+4. ~~**Groups + Export** — Group CRUD API + UI, CSV export~~ **DONE**
+   - Groups list page: create with searchable hotel multi-select, delete with confirm
+   - Group detail page: score table (same color coding as hotel list), CSV export, inline edit (rename + membership)
+   - 8 new backend tests (18 total): group CRUD, export endpoints, user isolation
+   - Minor bugs deferred to Phase 7: export filename doesn't reflect group name; no "back to groups" breadcrumb from hotel detail
 5. **Live Data Collection + Admin** — SerpAPI (Google), TripAdvisor Content API; responsible scraping for Booking/Expedia if free APIs unavailable. Admin reset endpoint to wipe hotel/snapshot data and re-import from clean CSV
 6. **Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs
-7. **Cleanup** — Fix "Needs Attention" card to exclude hotels with no review data (weighted avg 0); remove CSV upload button from dashboard UI
+7. **Cleanup** — Fix "Needs Attention" card to exclude hotels with no review data (weighted avg 0); remove CSV upload button from dashboard UI; group CSV export filename should reflect group name; hotel detail page should show "Back to groups" breadcrumb when navigated from a group
 8. **CSV Upload Polish** (stretch, likely won't reach) — Fix misleading "imported" count to distinguish new vs updated hotels; improve error handling for bad CSV files
 
 ### Cost philosophy
@@ -81,8 +85,8 @@ GET  /api/export/hotels        GET  /api/export/groups/{id}
 - `/dashboard` — summary stats, CSV upload (done)
 - `/hotels` — sortable/filterable/color-coded table (done)
 - `/hotels/:id` — detail with charts and history (done)
-- `/groups` — list/create groups (Phase 4)
-- `/groups/:id` — group detail with scores (Phase 4)
+- `/groups` — list/create groups (done)
+- `/groups/:id` — group detail with scores (done)
 
 ## Key Technical Notes
 - Python 3.14 — passlib doesn't work, we use bcrypt directly
