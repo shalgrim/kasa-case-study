@@ -42,7 +42,12 @@ class Hotel(Base):
     expedia_name = Column(String)
     tripadvisor_name = Column(String)
 
-    snapshots = relationship("ReviewSnapshot", back_populates="hotel", order_by="ReviewSnapshot.collected_at.desc()", cascade="all, delete-orphan")
+    snapshots = relationship(
+        "ReviewSnapshot",
+        back_populates="hotel",
+        order_by="ReviewSnapshot.collected_at.desc()",
+        cascade="all, delete-orphan",
+    )
     group_memberships = relationship("HotelGroupMembership", back_populates="hotel")
 
 
@@ -81,7 +86,9 @@ class HotelGroup(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     owner = relationship("User", back_populates="groups")
-    memberships = relationship("HotelGroupMembership", back_populates="group", cascade="all, delete-orphan")
+    memberships = relationship(
+        "HotelGroupMembership", back_populates="group", cascade="all, delete-orphan"
+    )
 
 
 class HotelGroupMembership(Base):

@@ -10,7 +10,9 @@ from ..services.csv_import import import_csv
 
 router = APIRouter()
 
-CLEAN_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "hotel_rows_to_import.csv")
+CLEAN_CSV_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "hotel_rows_to_import.csv"
+)
 
 
 @router.post("/reset")

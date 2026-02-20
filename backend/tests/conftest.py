@@ -42,12 +42,17 @@ def client():
 
 @pytest.fixture
 def auth_token(client):
-    resp = client.post("/api/auth/register", json={"email": "test@example.com", "password": "testpass123"})
+    resp = client.post(
+        "/api/auth/register",
+        json={"email": "test@example.com", "password": "testpass123"},
+    )
     assert resp.status_code == 200
     return resp.json()["access_token"]
 
 
-CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "Example_Review_Comparison.csv")
+CSV_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "Example_Review_Comparison.csv"
+)
 
 
 @contextmanager

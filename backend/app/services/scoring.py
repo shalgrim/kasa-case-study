@@ -18,7 +18,9 @@ def compute_scores(snapshot: ReviewSnapshot) -> None:
     snapshot.google_normalized = normalize_score(snapshot.google_score, "google")
     snapshot.booking_normalized = normalize_score(snapshot.booking_score, "booking")
     snapshot.expedia_normalized = normalize_score(snapshot.expedia_score, "expedia")
-    snapshot.tripadvisor_normalized = normalize_score(snapshot.tripadvisor_score, "tripadvisor")
+    snapshot.tripadvisor_normalized = normalize_score(
+        snapshot.tripadvisor_score, "tripadvisor"
+    )
 
     channels = [
         (snapshot.google_normalized, snapshot.google_count),
@@ -40,4 +42,6 @@ def compute_scores(snapshot: ReviewSnapshot) -> None:
             weighted_sum += norm_score * effective_count
             total_count += effective_count
 
-    snapshot.weighted_average = round(weighted_sum / total_count, 2) if total_count > 0 else None
+    snapshot.weighted_average = (
+        round(weighted_sum / total_count, 2) if total_count > 0 else None
+    )

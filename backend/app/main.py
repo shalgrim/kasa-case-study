@@ -29,7 +29,9 @@ with engine.connect() as conn:
     inspector = inspect(engine)
     user_columns = {c["name"] for c in inspector.get_columns("users")}
     if "is_admin" not in user_columns:
-        conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(
+            text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE")
+        )
         conn.commit()
 
 # Routers

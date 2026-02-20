@@ -14,24 +14,36 @@ def test_health(client):
 
 
 def test_register_and_login(client):
-    resp = client.post("/api/auth/register", json={"email": "user@test.com", "password": "pass123"})
+    resp = client.post(
+        "/api/auth/register", json={"email": "user@test.com", "password": "pass123"}
+    )
     assert resp.status_code == 200
     assert "access_token" in resp.json()
 
-    resp = client.post("/api/auth/login", json={"email": "user@test.com", "password": "pass123"})
+    resp = client.post(
+        "/api/auth/login", json={"email": "user@test.com", "password": "pass123"}
+    )
     assert resp.status_code == 200
     assert "access_token" in resp.json()
 
 
 def test_register_duplicate(client):
-    client.post("/api/auth/register", json={"email": "dup@test.com", "password": "pass123"})
-    resp = client.post("/api/auth/register", json={"email": "dup@test.com", "password": "pass123"})
+    client.post(
+        "/api/auth/register", json={"email": "dup@test.com", "password": "pass123"}
+    )
+    resp = client.post(
+        "/api/auth/register", json={"email": "dup@test.com", "password": "pass123"}
+    )
     assert resp.status_code == 400
 
 
 def test_login_wrong_password(client):
-    client.post("/api/auth/register", json={"email": "user2@test.com", "password": "pass123"})
-    resp = client.post("/api/auth/login", json={"email": "user2@test.com", "password": "wrong"})
+    client.post(
+        "/api/auth/register", json={"email": "user2@test.com", "password": "pass123"}
+    )
+    resp = client.post(
+        "/api/auth/login", json={"email": "user2@test.com", "password": "wrong"}
+    )
     assert resp.status_code == 401
 
 
@@ -59,12 +71,18 @@ def test_csv_import(client, auth_token):
     data = resp.json()
     assert data["imported"] > 90
 
-    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        "/api/hotels",
+        params={"page_size": 500},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     assert resp.status_code == 200
     hotels = resp.json()["items"]
     assert len(hotels) > 90
 
-    hotel_with_scores = next((h for h in hotels if h["latest_snapshot"] is not None), None)
+    hotel_with_scores = next(
+        (h for h in hotels if h["latest_snapshot"] is not None), None
+    )
     assert hotel_with_scores is not None
     assert hotel_with_scores["latest_snapshot"]["source"] == "csv_import"
 
@@ -81,7 +99,11 @@ def test_csv_import_scoring(client, auth_token):
             headers={"Authorization": f"Bearer {auth_token}"},
         )
 
-    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        "/api/hotels",
+        params={"page_size": 500},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     hotels = resp.json()["items"]
 
     # Sea Crest Beach Hotel — CSV row 3:
@@ -122,10 +144,16 @@ def test_hotel_detail(client, auth_token):
             headers={"Authorization": f"Bearer {auth_token}"},
         )
 
-    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        "/api/hotels",
+        params={"page_size": 500},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     hotel_id = resp.json()["items"][0]["id"]
 
-    resp = client.get(f"/api/hotels/{hotel_id}", headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        f"/api/hotels/{hotel_id}", headers={"Authorization": f"Bearer {auth_token}"}
+    )
     assert resp.status_code == 200
     assert resp.json()["id"] == hotel_id
 
@@ -141,15 +169,23 @@ def test_hotel_history(client, auth_token):
             headers={"Authorization": f"Bearer {auth_token}"},
         )
 
-    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        "/api/hotels",
+        params={"page_size": 500},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     hotel_id = resp.json()["items"][0]["id"]
 
-    resp = client.get(f"/api/hotels/{hotel_id}/history", headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        f"/api/hotels/{hotel_id}/history",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     assert resp.status_code == 200
     assert len(resp.json()) >= 1
 
 
 # ---- Group CRUD tests ----
+
 
 def _import_csv(client, auth_token):
     """Helper: import CSV and return list of hotel IDs."""
@@ -161,7 +197,11 @@ def _import_csv(client, auth_token):
             files={"file": ("reviews.csv", f, "text/csv")},
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-    resp = client.get("/api/hotels", params={"page_size": 500}, headers={"Authorization": f"Bearer {auth_token}"})
+    resp = client.get(
+        "/api/hotels",
+        params={"page_size": 500},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     return [h["id"] for h in resp.json()["items"]]
 
 
@@ -169,7 +209,11 @@ def test_create_group(client, auth_token):
     hotel_ids = _import_csv(client, auth_token)
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.post("/api/groups", json={"name": "Test Group", "hotel_ids": hotel_ids[:3]}, headers=headers)
+    resp = client.post(
+        "/api/groups",
+        json={"name": "Test Group", "hotel_ids": hotel_ids[:3]},
+        headers=headers,
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "Test Group"
@@ -187,7 +231,9 @@ def test_list_groups(client, auth_token):
 
     # Create one, then list
     hotel_ids = _import_csv(client, auth_token)
-    client.post("/api/groups", json={"name": "G1", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    client.post(
+        "/api/groups", json={"name": "G1", "hotel_ids": hotel_ids[:2]}, headers=headers
+    )
     client.post("/api/groups", json={"name": "G2", "hotel_ids": []}, headers=headers)
 
     resp = client.get("/api/groups", headers=headers)
@@ -202,7 +248,11 @@ def test_get_group_detail(client, auth_token):
     hotel_ids = _import_csv(client, auth_token)
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.post("/api/groups", json={"name": "Detail Group", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    resp = client.post(
+        "/api/groups",
+        json={"name": "Detail Group", "hotel_ids": hotel_ids[:2]},
+        headers=headers,
+    )
     group_id = resp.json()["id"]
 
     resp = client.get(f"/api/groups/{group_id}", headers=headers)
@@ -220,17 +270,25 @@ def test_update_group(client, auth_token):
     hotel_ids = _import_csv(client, auth_token)
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.post("/api/groups", json={"name": "Old Name", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    resp = client.post(
+        "/api/groups",
+        json={"name": "Old Name", "hotel_ids": hotel_ids[:2]},
+        headers=headers,
+    )
     group_id = resp.json()["id"]
 
     # Rename
-    resp = client.put(f"/api/groups/{group_id}", json={"name": "New Name"}, headers=headers)
+    resp = client.put(
+        f"/api/groups/{group_id}", json={"name": "New Name"}, headers=headers
+    )
     assert resp.status_code == 200
     assert resp.json()["name"] == "New Name"
     assert resp.json()["hotel_count"] == 2
 
     # Change membership
-    resp = client.put(f"/api/groups/{group_id}", json={"hotel_ids": hotel_ids[:5]}, headers=headers)
+    resp = client.put(
+        f"/api/groups/{group_id}", json={"hotel_ids": hotel_ids[:5]}, headers=headers
+    )
     assert resp.status_code == 200
     assert resp.json()["hotel_count"] == 5
 
@@ -238,7 +296,9 @@ def test_update_group(client, auth_token):
 def test_delete_group(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.post("/api/groups", json={"name": "To Delete", "hotel_ids": []}, headers=headers)
+    resp = client.post(
+        "/api/groups", json={"name": "To Delete", "hotel_ids": []}, headers=headers
+    )
     group_id = resp.json()["id"]
 
     resp = client.delete(f"/api/groups/{group_id}", headers=headers)
@@ -264,7 +324,11 @@ def test_export_group_csv(client, auth_token):
     hotel_ids = _import_csv(client, auth_token)
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.post("/api/groups", json={"name": "Export Group", "hotel_ids": hotel_ids[:3]}, headers=headers)
+    resp = client.post(
+        "/api/groups",
+        json={"name": "Export Group", "hotel_ids": hotel_ids[:3]},
+        headers=headers,
+    )
     group_id = resp.json()["id"]
 
     resp = client.get(f"/api/export/groups/{group_id}", headers=headers)
@@ -275,16 +339,22 @@ def test_export_group_csv(client, auth_token):
 def test_group_user_isolation(client):
     """User A's groups are invisible to User B."""
     # Register two users
-    resp_a = client.post("/api/auth/register", json={"email": "a@test.com", "password": "pass123"})
+    resp_a = client.post(
+        "/api/auth/register", json={"email": "a@test.com", "password": "pass123"}
+    )
     token_a = resp_a.json()["access_token"]
-    resp_b = client.post("/api/auth/register", json={"email": "b@test.com", "password": "pass123"})
+    resp_b = client.post(
+        "/api/auth/register", json={"email": "b@test.com", "password": "pass123"}
+    )
     token_b = resp_b.json()["access_token"]
 
     headers_a = {"Authorization": f"Bearer {token_a}"}
     headers_b = {"Authorization": f"Bearer {token_b}"}
 
     # User A creates a group
-    resp = client.post("/api/groups", json={"name": "A's Group", "hotel_ids": []}, headers=headers_a)
+    resp = client.post(
+        "/api/groups", json={"name": "A's Group", "hotel_ids": []}, headers=headers_a
+    )
     group_id = resp.json()["id"]
 
     # User B can't see it
@@ -302,7 +372,9 @@ def test_group_user_isolation(client):
 
 # ---- Phase 5: Collection (mocked), Admin, Delete ----
 
-CLEAN_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "hotel_rows_to_import.csv")
+CLEAN_CSV_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "hotel_rows_to_import.csv"
+)
 
 
 def test_collect_hotel_mocked(client, auth_token):
@@ -311,8 +383,12 @@ def test_collect_hotel_mocked(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     hotel_id = hotel_ids[0]
 
-    with patch("app.routers.reviews.collect_google_reviews", return_value=(4.5, 200)), \
-         patch("app.routers.reviews.collect_tripadvisor_reviews", return_value=(4.0, 150)):
+    with (
+        patch("app.routers.reviews.collect_google_reviews", return_value=(4.5, 200)),
+        patch(
+            "app.routers.reviews.collect_tripadvisor_reviews", return_value=(4.0, 150)
+        ),
+    ):
         resp = client.post(f"/api/reviews/hotels/{hotel_id}/collect", headers=headers)
 
     assert resp.status_code == 200
@@ -335,11 +411,19 @@ def test_collect_group_mocked(client, auth_token):
     hotel_ids = _import_csv(client, auth_token)
     headers = {"Authorization": f"Bearer {auth_token}"}
 
-    resp = client.post("/api/groups", json={"name": "Collect Group", "hotel_ids": hotel_ids[:2]}, headers=headers)
+    resp = client.post(
+        "/api/groups",
+        json={"name": "Collect Group", "hotel_ids": hotel_ids[:2]},
+        headers=headers,
+    )
     group_id = resp.json()["id"]
 
-    with patch("app.routers.reviews.collect_google_reviews", return_value=(4.2, 100)), \
-         patch("app.routers.reviews.collect_tripadvisor_reviews", return_value=(3.8, 80)):
+    with (
+        patch("app.routers.reviews.collect_google_reviews", return_value=(4.2, 100)),
+        patch(
+            "app.routers.reviews.collect_tripadvisor_reviews", return_value=(3.8, 80)
+        ),
+    ):
         resp = client.post(f"/api/reviews/groups/{group_id}/collect", headers=headers)
 
     assert resp.status_code == 200
@@ -410,7 +494,11 @@ def test_delete_hotel_cleans_up_group_membership(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
 
     # Create group with 3 hotels
-    resp = client.post("/api/groups", json={"name": "Cleanup Group", "hotel_ids": hotel_ids[:3]}, headers=headers)
+    resp = client.post(
+        "/api/groups",
+        json={"name": "Cleanup Group", "hotel_ids": hotel_ids[:3]},
+        headers=headers,
+    )
     group_id = resp.json()["id"]
 
     # Delete one hotel
@@ -447,11 +535,17 @@ def test_delete_hotel_requires_confirmation(client, auth_token):
 
 # ---- Phase 6: Create Hotel (manual) ----
 
+
 def test_create_hotel(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     resp = client.post(
         "/api/hotels",
-        json={"name": "Test Hotel", "city": "Portland", "state": "OR", "website": "https://example.com"},
+        json={
+            "name": "Test Hotel",
+            "city": "Portland",
+            "state": "OR",
+            "website": "https://example.com",
+        },
         headers=headers,
     )
     assert resp.status_code == 200
@@ -475,6 +569,7 @@ def test_create_hotel_name_required(client, auth_token):
 
 
 # ---- Phase 7: Hardening tests ----
+
 
 def test_search_escapes_like_wildcards(client, auth_token):
     """Searching for '%' should not match all hotels."""
@@ -509,7 +604,9 @@ def test_pagination(client, auth_token):
         client.post("/api/hotels", json={"name": f"Hotel {i}"}, headers=headers)
 
     # Page 1 with page_size=2
-    resp = client.get("/api/hotels", params={"page": 1, "page_size": 2}, headers=headers)
+    resp = client.get(
+        "/api/hotels", params={"page": 1, "page_size": 2}, headers=headers
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 5
@@ -518,13 +615,17 @@ def test_pagination(client, auth_token):
     assert len(data["items"]) == 2
 
     # Page 3 with page_size=2 should have 1 item
-    resp = client.get("/api/hotels", params={"page": 3, "page_size": 2}, headers=headers)
+    resp = client.get(
+        "/api/hotels", params={"page": 3, "page_size": 2}, headers=headers
+    )
     data = resp.json()
     assert len(data["items"]) == 1
     assert data["total"] == 5
 
     # Page beyond range returns empty items
-    resp = client.get("/api/hotels", params={"page": 10, "page_size": 2}, headers=headers)
+    resp = client.get(
+        "/api/hotels", params={"page": 10, "page_size": 2}, headers=headers
+    )
     data = resp.json()
     assert len(data["items"]) == 0
     assert data["total"] == 5
@@ -552,10 +653,14 @@ def test_collect_hotel_all_four_channels(client, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     hotel_id = hotel_ids[0]
 
-    with patch("app.routers.reviews.collect_google_reviews", return_value=(4.5, 200)), \
-         patch("app.routers.reviews.collect_booking_reviews", return_value=(8.1, 300)), \
-         patch("app.routers.reviews.collect_expedia_reviews", return_value=(7.9, 250)), \
-         patch("app.routers.reviews.collect_tripadvisor_reviews", return_value=(4.0, 150)):
+    with (
+        patch("app.routers.reviews.collect_google_reviews", return_value=(4.5, 200)),
+        patch("app.routers.reviews.collect_booking_reviews", return_value=(8.1, 300)),
+        patch("app.routers.reviews.collect_expedia_reviews", return_value=(7.9, 250)),
+        patch(
+            "app.routers.reviews.collect_tripadvisor_reviews", return_value=(4.0, 150)
+        ),
+    ):
         resp = client.post(f"/api/reviews/hotels/{hotel_id}/collect", headers=headers)
 
     assert resp.status_code == 200

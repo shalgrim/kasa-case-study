@@ -145,7 +145,9 @@ def list_hotels(
 
     # Sort
     ALLOWED_SORT_FIELDS = {"name", "city", "state", "keys", "kind", "brand", "parent"}
-    sort_column = getattr(Hotel, sort_by) if sort_by in ALLOWED_SORT_FIELDS else Hotel.name
+    sort_column = (
+        getattr(Hotel, sort_by) if sort_by in ALLOWED_SORT_FIELDS else Hotel.name
+    )
     if sort_dir == "desc":
         query = query.order_by(sort_column.desc())
     else:
@@ -164,7 +166,9 @@ def list_hotels(
 
 
 @router.get("/{hotel_id}", response_model=HotelDetail)
-def get_hotel(hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_hotel(
+    hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
     hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
@@ -179,20 +183,29 @@ def get_hotel(hotel_id: int, db: Session = Depends(get_db), user: User = Depends
 # prevents accidental calls but any authenticated user can still delete.
 # Deferring to cleanup phase in the interest of time.
 @router.delete("/{hotel_id}")
-def delete_hotel(hotel_id: int, confirm: bool = Query(False), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def delete_hotel(
+    hotel_id: int,
+    confirm: bool = Query(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     if not confirm:
         raise HTTPException(status_code=400, detail="Pass ?confirm=true to delete")
     hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
-    db.query(HotelGroupMembership).filter(HotelGroupMembership.hotel_id == hotel_id).delete()
+    db.query(HotelGroupMembership).filter(
+        HotelGroupMembership.hotel_id == hotel_id
+    ).delete()
     db.delete(hotel)
     db.commit()
     return {"deleted": True}
 
 
 @router.get("/{hotel_id}/history", response_model=list[SnapshotOut])
-def get_hotel_history(hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_hotel_history(
+    hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
     hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
