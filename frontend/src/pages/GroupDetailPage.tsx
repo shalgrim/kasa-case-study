@@ -38,6 +38,7 @@ export default function GroupDetailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [hotelSearch, setHotelSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const fetchGroup = () => {
     if (!id) return;
@@ -70,10 +71,15 @@ export default function GroupDetailPage() {
   const handleSave = async () => {
     if (!id) return;
     setSaving(true);
-    await updateGroup(Number(id), { name: editName.trim(), hotel_ids: Array.from(selectedIds) });
+    setError('');
+    try {
+      await updateGroup(Number(id), { name: editName.trim(), hotel_ids: Array.from(selectedIds) });
+      setEditing(false);
+      fetchGroup();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to save group.');
+    }
     setSaving(false);
-    setEditing(false);
-    fetchGroup();
   };
 
   const toggleHotel = (hid: number) => {
@@ -96,6 +102,7 @@ export default function GroupDetailPage() {
 
   return (
     <div>
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
       <Link to="/groups" className="text-blue-600 hover:underline text-sm">← Back to groups</Link>
 
       <div className="mt-4 mb-6 flex justify-between items-start">

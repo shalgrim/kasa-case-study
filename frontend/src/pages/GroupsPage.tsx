@@ -20,6 +20,7 @@ export default function GroupsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [hotelSearch, setHotelSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const fetchGroups = () => {
     listGroups().then(r => { setGroups(r.data); setLoading(false); });
@@ -37,18 +38,28 @@ export default function GroupsPage() {
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setSaving(true);
-    await createGroup(newName.trim(), Array.from(selectedIds));
-    setNewName('');
-    setSelectedIds(new Set());
-    setShowForm(false);
+    setError('');
+    try {
+      await createGroup(newName.trim(), Array.from(selectedIds));
+      setNewName('');
+      setSelectedIds(new Set());
+      setShowForm(false);
+      fetchGroups();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create group.');
+    }
     setSaving(false);
-    fetchGroups();
   };
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Delete group "${name}"?`)) return;
-    await deleteGroup(id);
-    fetchGroups();
+    setError('');
+    try {
+      await deleteGroup(id);
+      fetchGroups();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete group.');
+    }
   };
 
   const toggleHotel = (id: number) => {
@@ -71,6 +82,7 @@ export default function GroupsPage() {
 
   return (
     <div>
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Groups ({groups.length})</h2>
         <button onClick={openForm} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">

@@ -50,6 +50,7 @@ export default function HotelDetailPage() {
   const [collecting, setCollecting] = useState(false);
   const [collectMsg, setCollectMsg] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -77,8 +78,8 @@ export default function HotelDetailPage() {
     try {
       await client.delete(`/hotels/${id}?confirm=true`);
       navigate('/hotels');
-    } catch {
-      alert('Failed to delete hotel.');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete hotel.');
       setDeleting(false);
     }
   };
@@ -103,6 +104,7 @@ export default function HotelDetailPage() {
 
   return (
     <div>
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
       <Link to="/hotels" className="text-blue-600 hover:underline text-sm">← Back to hotels</Link>
 
       <div className="mt-4 mb-6">

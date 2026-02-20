@@ -53,8 +53,8 @@ export default function DashboardPage() {
       const resp = await client.post('/hotels/import-csv', formData);
       setUploadMsg(`Imported ${resp.data.imported} hotel records.`);
       loadStats();
-    } catch {
-      setUploadMsg('Upload failed.');
+    } catch (err: any) {
+      setUploadMsg(err.response?.data?.detail || 'Upload failed.');
     }
     setUploading(false);
   };

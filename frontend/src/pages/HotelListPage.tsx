@@ -47,6 +47,7 @@ export default function HotelListPage() {
   const [formData, setFormData] = useState({ name: '', city: '', state: '', website: '', booking_name: '', expedia_name: '', tripadvisor_name: '' });
   const [showOta, setShowOta] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const pageSize = 50;
@@ -70,8 +71,8 @@ export default function HotelListPage() {
       setFormData({ name: '', city: '', state: '', website: '', booking_name: '', expedia_name: '', tripadvisor_name: '' });
       setShowOta(false);
       loadHotels();
-    } catch {
-      alert('Failed to create hotel.');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create hotel.');
     }
     setCreating(false);
   };
@@ -135,6 +136,7 @@ export default function HotelListPage() {
 
   return (
     <div>
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Hotels ({sorted.length})</h2>
         <div className="flex gap-2">
