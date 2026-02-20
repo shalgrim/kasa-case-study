@@ -29,14 +29,14 @@ A web-based dashboard that aggregates hotel review data across Google, TripAdvis
 ## Architecture
 
 ```
-┌─────────────┐       ┌──────────────────────────────────┐
-│   Vercel     │       │         Render                   │
-│   (React)    │──────▶│  FastAPI  ──▶  PostgreSQL        │
-│              │  JWT  │     │                             │
+┌─────────────┐       ┌────────────────────────-──────────┐
+│   Vercel    │       │         Render                    │
+│   (React)   │──────▶│  FastAPI  ──▶  PostgreSQL         │
+│             │  JWT  │     │                             │
 └─────────────┘       │     ├──▶ SerpAPI (Google)         │
                       │     ├──▶ TripAdvisor Content API  │
                       │     └──▶ Apify (Booking/Expedia)  │
-                      └──────────────────────────────────┘
+                      └────────────────────────-──────────┘
 ```
 
 The frontend is a static React SPA deployed on Vercel. All API calls go to the FastAPI backend on Render, which manages auth (JWT bearer tokens), hotel/group CRUD, CSV import, live review collection, and data export.
