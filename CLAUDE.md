@@ -19,6 +19,10 @@ Case study for Kasa's AI Solutions Engineer role. A web-based "Reputation Dashbo
 - **Normalization to 0-10**: Google/TripAdvisor (1-5 scale) multiply by 2. Booking/Expedia (1-10 scale) use as-is.
 - **Weighted average**: `sum(normalized_score_i * review_count_i) / sum(review_count_i)` across channels with data.
 - Channels with no data (n/a) are excluded from the weighted average.
+- **Expedia label-to-score mapping**: The Expedia Apify actor (`jupri/expedia-hotels`) returns text labels instead of numeric scores. We map these to midpoint values on a 1-10 scale (see `backend/app/services/collectors/expedia.py`):
+  - Exceptional → 9.5, Wonderful → 9.0, Excellent → 8.5
+  - Very Good → 7.5, Good → 6.5, OK → 5.5
+  - Unknown labels → treated as no data (excluded from weighted average)
 
 ## CSV Format Notes (`Example_Review_Comparison.csv`)
 - Two header rows (row 1 = category labels, row 2 = column names)

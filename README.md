@@ -15,6 +15,44 @@ A web-based dashboard that aggregates hotel review data across Google, TripAdvis
 - **Collect live reviews** from Google (SerpAPI), TripAdvisor (Content API), Booking.com (Apify), and Expedia (Apify)
 - **Create hotels manually** when they aren't in the CSV
 
+## Evaluating the Live Demo
+
+### Getting started
+
+1. Open the [frontend](https://kasa-case-study.vercel.app) (the Render backend may cold-start — allow 30-60s on first load)
+2. **Register** a new account (any email/password — no verification)
+3. You'll land on the dashboard with summary stats across all hotels
+
+### Understanding the data
+
+The database is pre-loaded with ~100 hotels imported from a CSV of real Kasa properties. Each hotel has review scores and counts from up to four channels (Google, Booking.com, Expedia, TripAdvisor), imported from the CSV as the initial snapshot.
+
+**This CSV data is real but static** — it reflects scores at the time the CSV was generated, not live values.
+
+### Collecting live reviews
+
+To see live collection in action:
+
+1. Click any hotel from the hotel list (e.g. search for "Sea Crest")
+2. On the detail page, click **"Collect Live Reviews"**
+3. The system calls all four channel APIs and creates a **new snapshot** — the button may spin for 1-4 minutes depending on which API keys are configured
+4. The snapshot history table at the bottom shows both the original CSV import and the new live snapshot
+
+Live collection never overwrites existing data. Each collection creates a new snapshot row. If a channel's API key isn't configured or the lookup fails, that channel's scores carry forward from the previous snapshot.
+
+### Groups and export
+
+- Create a group from the **Groups** page to organize hotels into a portfolio
+- Group detail shows a comparison table with scores across all members
+- CSV export is available from both the hotel list and group detail pages
+
+### What to look at in the code
+
+- **Scoring model**: `backend/app/services/scoring.py` — normalization and weighted average logic
+- **Live collectors**: `backend/app/services/collectors/` — four collectors with different API patterns (REST, scraping), each returning `(score, count)` with graceful fallback
+- **Tests**: `backend/tests/` — 48 tests covering auth, CRUD, CSV import, scoring, collection, groups, admin, and hardening (N+1 queries, SQL injection via LIKE wildcards, pagination)
+- **Collector testing details**: `docs/live-testing-collectors.md` — documents the Apify actor schemas, field mappings, and gotchas discovered during live testing
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -24,7 +62,7 @@ A web-based dashboard that aggregates hotel review data across Google, TripAdvis
 | Database | SQLite (dev), PostgreSQL (prod via Render) |
 | Deployment | Render (backend + DB), Vercel (frontend) |
 | Scraping | Apify (apify-client) for Booking.com + Expedia |
-| Testing | pytest (43 backend tests), in-memory SQLite with StaticPool |
+| Testing | pytest (48 backend tests), in-memory SQLite with StaticPool |
 
 ## Architecture
 
@@ -53,6 +91,21 @@ Review scores arrive on different scales per channel:
 | Expedia | 1-10 | as-is |
 
 **Weighted average** = `Σ(normalized_score × review_count) / Σ(review_count)` across channels with data. Channels with no data (`n/a`) are excluded.
+
+### Expedia label-to-score mapping
+
+The Expedia Apify scraper returns text labels instead of numeric scores. I map these to midpoint values on a 1-10 scale:
+
+| Expedia Label | Mapped Score |
+|---------------|-------------|
+| Exceptional | 9.5 |
+| Wonderful | 9.0 |
+| Excellent | 8.5 |
+| Very Good | 7.5 |
+| Good | 6.5 |
+| OK | 5.5 |
+
+Unknown labels are treated as missing data and excluded from the weighted average. This is an approximation — Expedia's API does not expose the underlying numeric score.
 
 ## Data Strategy
 
@@ -122,7 +175,7 @@ Admin:       POST /api/admin/reset (admin-only)
 
 ## Key Trade-offs
 
-- **Booking/Expedia via Apify** — Neither offers a free public API. We use Apify hosted scrapers which add latency (30-120s per actor run) and cost compute units, but avoid maintaining custom scrapers.
+- **Booking/Expedia via Apify** — Neither offers a free public API. I use Apify hosted scrapers which add latency (30-120s per actor run) and cost compute units, but avoid maintaining custom scrapers.
 - **Shared hotel model** — Hotels are global (not per-user) since they represent real properties. Groups provide per-user organization on top of the shared dataset.
 - **SQLite for dev, PostgreSQL for prod** — Keeps local development simple while using a production-grade database on Render. Tests use in-memory SQLite for speed and isolation.
 - **CSV parsing with column indices** — The source CSV has two header rows, merged cells, and inconsistent formatting. Hardcoded indices are more reliable than header-name matching for this specific file format.
@@ -155,7 +208,7 @@ The commit history is intentionally structured to show the progression of work a
 │   ├── tests/
 │   │   ├── conftest.py          # In-memory SQLite, fixtures, query counter
 │   │   ├── test_api.py          # 33 integration tests
-│   │   └── test_collectors.py  # 10 unit tests (Booking + Expedia)
+│   │   └── test_collectors.py  # 15 unit tests (Booking + Expedia)
 │   └── dev.sh                   # Dev helper (run, test, compile, etc.)
 ├── frontend/
 │   └── src/

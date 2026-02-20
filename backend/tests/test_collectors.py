@@ -101,17 +101,47 @@ class TestExpediaCollector:
         assert result == (None, None)
 
     def test_success(self):
-        hotel = _make_hotel()
+        hotel = _make_hotel(name="Sea Crest Beach Resort")
         mock_client = MagicMock()
         mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
         mock_client.dataset.return_value.iterate_items.return_value = [
-            {"rating": 9.2, "reviewCount": 450}
+            {"name": "Sea Crest Beach Resort", "reviews.label": "Very Good", "reviews.total": 251}
         ]
         with patch("app.services.collectors.expedia.APIFY_TOKEN", "tok"), \
              patch("app.services.collectors.expedia.ApifyClient", return_value=mock_client):
             score, count = collect_expedia_reviews(hotel)
-        assert score == 9.2
-        assert count == 450
+        assert score == 7.5
+        assert count == 251
+
+    def test_label_mapping(self):
+        """Each known label maps to the expected score."""
+        cases = [
+            ("Exceptional", 9.5), ("Wonderful", 9.0), ("Excellent", 8.5),
+            ("Very Good", 7.5), ("Good", 6.5), ("OK", 5.5),
+        ]
+        for label, expected_score in cases:
+            hotel = _make_hotel(name="Hotel")
+            mock_client = MagicMock()
+            mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
+            mock_client.dataset.return_value.iterate_items.return_value = [
+                {"name": "Hotel", "reviews.label": label, "reviews.total": 100}
+            ]
+            with patch("app.services.collectors.expedia.APIFY_TOKEN", "tok"), \
+                 patch("app.services.collectors.expedia.ApifyClient", return_value=mock_client):
+                score, count = collect_expedia_reviews(hotel)
+            assert score == expected_score, f"Label '{label}' should map to {expected_score}, got {score}"
+
+    def test_unknown_label_returns_none(self):
+        hotel = _make_hotel(name="Hotel")
+        mock_client = MagicMock()
+        mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
+        mock_client.dataset.return_value.iterate_items.return_value = [
+            {"name": "Hotel", "reviews.label": "Unknown Label", "reviews.total": 50}
+        ]
+        with patch("app.services.collectors.expedia.APIFY_TOKEN", "tok"), \
+             patch("app.services.collectors.expedia.ApifyClient", return_value=mock_client):
+            result = collect_expedia_reviews(hotel)
+        assert result == (None, None)
 
     def test_empty_dataset(self):
         mock_client = MagicMock()
@@ -133,10 +163,25 @@ class TestExpediaCollector:
         mock_client = MagicMock()
         mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
         mock_client.dataset.return_value.iterate_items.return_value = [
-            {"rating": 8.0, "reviewCount": 200}
+            {"name": "Fallback Hotel", "reviews.label": "Excellent", "reviews.total": 200}
         ]
         with patch("app.services.collectors.expedia.APIFY_TOKEN", "tok"), \
              patch("app.services.collectors.expedia.ApifyClient", return_value=mock_client):
             collect_expedia_reviews(hotel)
         call_args = mock_client.actor.return_value.call.call_args
-        assert call_args.kwargs["run_input"]["search"] == "Fallback Hotel Portland OR"
+        assert call_args.kwargs["run_input"]["location"] == ["Fallback Hotel Portland OR"]
+        assert call_args.kwargs["run_input"]["limit"] == 5
+
+    def test_name_matching_picks_correct_hotel(self):
+        hotel = _make_hotel(name="Sea Crest Beach Resort")
+        mock_client = MagicMock()
+        mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
+        mock_client.dataset.return_value.iterate_items.return_value = [
+            {"name": "Iris Hotel Cape Cod", "reviews.label": "Excellent", "reviews.total": 183},
+            {"name": "Sea Crest Beach Resort", "reviews.label": "Very Good", "reviews.total": 251},
+        ]
+        with patch("app.services.collectors.expedia.APIFY_TOKEN", "tok"), \
+             patch("app.services.collectors.expedia.ApifyClient", return_value=mock_client):
+            score, count = collect_expedia_reviews(hotel)
+        assert score == 7.5
+        assert count == 251

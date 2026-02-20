@@ -10,6 +10,17 @@ logger = logging.getLogger(__name__)
 APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
 ACTOR_ID = "jupri/expedia-hotels"
 
+# The Expedia actor returns text labels instead of numeric scores.
+# Map to midpoint of each label's typical range on a 1-10 scale.
+LABEL_TO_SCORE = {
+    "exceptional": 9.5,
+    "wonderful": 9.0,
+    "excellent": 8.5,
+    "very good": 7.5,
+    "good": 6.5,
+    "ok": 5.5,
+}
+
 
 def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     """Collect Expedia reviews via Apify scraper. Returns (score, count)."""
@@ -20,7 +31,7 @@ def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     try:
         client = ApifyClient(APIFY_TOKEN)
         run = client.actor(ACTOR_ID).call(
-            run_input={"search": search_query, "maxItems": 1},
+            run_input={"location": [search_query], "limit": 5},
             timeout_secs=120,
         )
 
@@ -28,9 +39,16 @@ def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         if not items:
             return None, None
 
-        item = items[0]
-        score = item.get("rating") or item.get("guestScore")
-        count = item.get("reviewCount") or item.get("numberOfReviews")
+        # Try to find a name match first; fall back to first result.
+        match_name = (hotel.expedia_name or hotel.name).lower()
+        item = next(
+            (i for i in items if match_name in i.get("name", "").lower()),
+            items[0],
+        )
+
+        count = item.get("reviews.total")
+        label = (item.get("reviews.label") or "").lower()
+        score = LABEL_TO_SCORE.get(label)
 
         if score is not None:
             return float(score), int(count) if count is not None else None
