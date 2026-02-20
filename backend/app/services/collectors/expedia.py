@@ -1,0 +1,41 @@
+import logging
+import os
+
+from apify_client import ApifyClient
+
+from ...models import Hotel
+
+logger = logging.getLogger(__name__)
+
+APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
+ACTOR_ID = "maxcopell/expedia-scraper"
+
+
+def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
+    """Collect Expedia reviews via Apify scraper. Returns (score, count)."""
+    if not APIFY_TOKEN:
+        return None, None
+
+    search_query = hotel.expedia_name or hotel.name
+    try:
+        client = ApifyClient(APIFY_TOKEN)
+        run = client.actor(ACTOR_ID).call(
+            run_input={"search": search_query, "maxItems": 1},
+            timeout_secs=120,
+        )
+
+        items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+        if not items:
+            return None, None
+
+        item = items[0]
+        score = item.get("rating") or item.get("guestScore")
+        count = item.get("reviewCount") or item.get("numberOfReviews")
+
+        if score is not None:
+            return float(score), int(count) if count is not None else None
+
+    except Exception:
+        logger.exception("Failed to collect Expedia reviews for hotel %s", hotel.name)
+
+    return None, None
