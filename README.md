@@ -4,7 +4,7 @@
 
 ## Start Here: Demo and Links
 
-- **Recorded demo:** [Watch Me First](https://drive.google.com/file/d/1Rxbo248zSw1MxYB_2XvQ8nWXUR2iVJhM/view)
+- **Recorded demo:** [Watch Me First](https://photos.google.com/share/AF1QipPoAF6GTJyOCaB8kZ62j1bG5fYR8lVua3QDP7IkwN2-MRu67TIcdbA8qVJ6EdMESA/photo/AF1QipPl5jP104DeV9Qy8X6B0kSM39-Jeq6aXiN3WIln?key=ZFZUYTJWWDIzbWhXQUxyUjFwNXdERkFOenpLN2t3)
 - **Live demo:** [kasa-case-study.vercel.app](https://kasa-case-study.vercel.app) (register with any email/password)
 - **Source code:** This repo
 - **Backend API:** [kasa-case-study.onrender.com](https://kasa-case-study.onrender.com/api/health) *(free tier — first request may take 30-60s to cold-start)*
