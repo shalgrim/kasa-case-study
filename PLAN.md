@@ -2,14 +2,15 @@
 
 ## Current State (for future Claude sessions)
 
-**Phase 5 is DONE — verified locally.** Next up is Phase 6 (Documentation).
+**Phase 7 (Hardening) is DONE.** Next up is Phase 6 (Documentation / README) and the remaining Phase 7 cleanup items.
 
 **The live Render database has 422 hotels including junk summary/aggregate rows** (e.g., "AC" with City="4" State="2%", "Albuquerque" with City="1" State="0%"). These came from summary rows in the original CSV (`Example_Review_Comparison.csv`). A clean CSV (`hotel_rows_to_import.csv`) has been created with only real hotel rows. Phase 5's admin reset endpoint will let us wipe the DB and re-import with the clean file.
 
 **Known issues to fix later:**
-- "Needs Attention" dashboard card shows hotels with no review data (weighted avg 0) instead of genuinely low-scoring hotels → Phase 7
+- "Needs Attention" dashboard card shows hotels with no review data (weighted avg 0) instead of genuinely low-scoring hotels → remaining cleanup
 - CSV upload reports "426 rows imported" but hotel count unchanged (upsert — count is misleading) → Phase 8
 - CORS required setting `FRONTEND_URL` env var on Render (no trailing slash) — fixed during verification
+- Hotel deletion should be restricted to admins (TODO in code) → remaining cleanup
 
 **Important conventions** (see also CLAUDE.md):
 - User pushes to GitHub manually (don't use `git push`)
@@ -51,9 +52,23 @@
    - Frontend "Delete Hotel" button with confirm dialog
    - 6 new tests (24 total): mocked collection (single + group), admin reset, hotel deletion, group membership cleanup
    - Booking/Expedia scraping deferred — no public APIs available; Google (SerpAPI) and TripAdvisor (Content API) collectors already implemented in Phase 2
-6. **Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs
-7. **Cleanup** — Fix "Needs Attention" card to exclude hotels with no review data (weighted avg 0); remove CSV upload button from dashboard UI; group CSV export filename should reflect group name; hotel detail page should show "Back to groups" breadcrumb when navigated from a group; add Admin Reset button to dashboard UI
-8. **CSV Upload Polish** (stretch, likely won't reach) — Fix misleading "imported" count to distinguish new vs updated hotels; improve error handling for bad CSV files
+6. ~~**Add Hotel** — Manual hotel creation with website field~~ **DONE**
+   - `POST /api/hotels` — create hotel with name, city, state, website, OTA names
+   - Frontend form on HotelListPage with collapsible OTA names section
+7. ~~**Hardening** — Address evaluation weaknesses~~ **DONE** (9 commits, 32 tests)
+   - Escape LIKE wildcards in search (+ ESCAPE clause)
+   - Whitelist sort_by parameter
+   - Add pagination to GET /api/hotels (envelope response, prev/next UI)
+   - Fix N+1 query with joinedload
+   - Require ?confirm=true for hotel deletion
+   - Add is_admin role check to admin reset endpoint
+   - Extract SnapshotOut.from_model classmethod (DRY)
+   - Replace alert()/bare catch with inline error banners (all pages)
+   - Log exceptions in Google/TripAdvisor collectors
+   - TDD approach: tests written first, verified red, then fix, verified green
+8. **Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs
+9. **Cleanup** — Fix "Needs Attention" card; restrict hotel deletion to admins; group CSV export filename should reflect group name; hotel detail "Back to groups" breadcrumb; add Admin Reset button to dashboard UI; frontend tests
+10. **CSV Upload Polish** (stretch, likely won't reach) — Fix misleading "imported" count; improve error handling for bad CSV files
 
 ### Cost philosophy
 Prefer free options. Consider responsible scraping if paid APIs are needed. Keep costs well under budget.
@@ -69,7 +84,8 @@ Prefer free options. Consider responsible scraping if paid APIs are needed. Keep
 ## API Endpoints
 ```
 POST /api/auth/register        POST /api/auth/login
-POST /api/hotels/import-csv    GET  /api/hotels
+POST /api/hotels                POST /api/hotels/import-csv
+GET  /api/hotels
 GET  /api/hotels/{id}          GET  /api/hotels/{id}/history
 POST /api/reviews/hotels/{id}/collect
 POST /api/groups               GET  /api/groups
@@ -80,7 +96,7 @@ DELETE /api/hotels/{id}        POST /api/admin/reset
 ```
 
 ## Database Models
-- **User**: id, email, hashed_password
+- **User**: id, email, hashed_password, is_admin
 - **Hotel**: id, name, city, state, keys, kind, brand, parent, booking_name, expedia_name, tripadvisor_name
 - **ReviewSnapshot**: id, hotel_id, collected_at, source, scores/counts per channel (google/booking/expedia/tripadvisor), normalized scores (4), weighted_average
 - **HotelGroup**: id, name, user_id, created_at
