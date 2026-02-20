@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy import inspect, text
+
 from .database import Base, engine
 from .routers import admin, auth, export, groups, hotels, reviews
 
@@ -21,8 +23,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create tables
+# Create tables + migrate missing columns
 Base.metadata.create_all(bind=engine)
+
+with engine.connect() as conn:
+    inspector = inspect(engine)
+    user_columns = {c["name"] for c in inspector.get_columns("users")}
+    if "is_admin" not in user_columns:
+        conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.commit()
 
 # Routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
