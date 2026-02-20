@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,16 +15,30 @@ from ..services.scoring import compute_scores
 router = APIRouter()
 
 
+def _collect_all(hotel):
+    """Run all 4 collectors in parallel."""
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        f_google = pool.submit(collect_google_reviews, hotel)
+        f_booking = pool.submit(collect_booking_reviews, hotel)
+        f_expedia = pool.submit(collect_expedia_reviews, hotel)
+        f_ta = pool.submit(collect_tripadvisor_reviews, hotel)
+    return f_google.result(), f_booking.result(), f_expedia.result(), f_ta.result()
+
+
 @router.post("/hotels/{hotel_id}/collect")
-def collect_hotel_reviews(hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def collect_hotel_reviews(
+    hotel_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
     hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
 
-    google_score, google_count = collect_google_reviews(hotel)
-    booking_score, booking_count = collect_booking_reviews(hotel)
-    expedia_score, expedia_count = collect_expedia_reviews(hotel)
-    ta_score, ta_count = collect_tripadvisor_reviews(hotel)
+    (
+        (google_score, google_count),
+        (booking_score, booking_count),
+        (expedia_score, expedia_count),
+        (ta_score, ta_count),
+    ) = _collect_all(hotel)
 
     # Track which channels returned live data
     channels = {
@@ -66,8 +82,14 @@ def collect_hotel_reviews(hotel_id: int, db: Session = Depends(get_db), user: Us
 
 
 @router.post("/groups/{group_id}/collect")
-def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    group = db.query(HotelGroup).filter(HotelGroup.id == group_id, HotelGroup.user_id == user.id).first()
+def collect_group_reviews(
+    group_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    group = (
+        db.query(HotelGroup)
+        .filter(HotelGroup.id == group_id, HotelGroup.user_id == user.id)
+        .first()
+    )
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
@@ -75,10 +97,12 @@ def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: Us
     for m in group.memberships:
         hotel = m.hotel
 
-        google_score, google_count = collect_google_reviews(hotel)
-        booking_score, booking_count = collect_booking_reviews(hotel)
-        expedia_score, expedia_count = collect_expedia_reviews(hotel)
-        ta_score, ta_count = collect_tripadvisor_reviews(hotel)
+        (
+            (google_score, google_count),
+            (booking_score, booking_count),
+            (expedia_score, expedia_count),
+            (ta_score, ta_count),
+        ) = _collect_all(hotel)
 
         channels = {
             "google": google_score is not None,
@@ -89,7 +113,15 @@ def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: Us
         succeeded = [ch for ch, ok in channels.items() if ok]
 
         if not succeeded:
-            results.append({"hotel_id": hotel.id, "hotel_name": hotel.name, "status": "failed", "channels_succeeded": [], "channels_failed": list(channels.keys())})
+            results.append(
+                {
+                    "hotel_id": hotel.id,
+                    "hotel_name": hotel.name,
+                    "status": "failed",
+                    "channels_succeeded": [],
+                    "channels_failed": list(channels.keys()),
+                }
+            )
             continue
 
         snapshot = ReviewSnapshot(
@@ -107,7 +139,18 @@ def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: Us
         compute_scores(snapshot)
         db.add(snapshot)
         failed = [ch for ch, ok in channels.items() if not ok]
-        results.append({"hotel_id": hotel.id, "hotel_name": hotel.name, "status": "ok", "channels_succeeded": succeeded, "channels_failed": failed})
+        results.append(
+            {
+                "hotel_id": hotel.id,
+                "hotel_name": hotel.name,
+                "status": "ok",
+                "channels_succeeded": succeeded,
+                "channels_failed": failed,
+            }
+        )
 
     db.commit()
-    return {"collected": sum(1 for r in results if r["status"] == "ok"), "hotels": results}
+    return {
+        "collected": sum(1 for r in results if r["status"] == "ok"),
+        "hotels": results,
+    }
