@@ -1,8 +1,11 @@
+import logging
 import os
 
 import httpx
 
 from ...models import Hotel
+
+logger = logging.getLogger(__name__)
 
 TRIPADVISOR_KEY = os.getenv("TRIPADVISOR_KEY", "")
 BASE_URL = "https://api.content.tripadvisor.com/api/v1"
@@ -52,6 +55,6 @@ def collect_tripadvisor_reviews(hotel: Hotel) -> tuple[float | None, int | None]
             return float(rating), count
 
     except Exception:
-        pass
+        logger.exception("Failed to collect TripAdvisor reviews for hotel %s", hotel.name)
 
     return None, None

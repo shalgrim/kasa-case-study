@@ -1,8 +1,11 @@
+import logging
 import os
 
 import httpx
 
 from ...models import Hotel
+
+logger = logging.getLogger(__name__)
 
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
@@ -45,6 +48,6 @@ def collect_google_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
                 return float(rating), int(reviews) if reviews else None
 
     except Exception:
-        pass
+        logger.exception("Failed to collect Google reviews for hotel %s", hotel.name)
 
     return None, None
