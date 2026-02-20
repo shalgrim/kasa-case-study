@@ -40,18 +40,30 @@ def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
 
         items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
         if not items:
+            logger.warning("Expedia: no results for %s", hotel.name)
             return None, None
 
         # The search returns nearby properties — find the right one by name.
         match_name = (hotel.expedia_name or hotel.name).lower()
+        logger.info("Expedia: got %d results for '%s', looking for '%s': %s",
+                    len(items), location_query, match_name,
+                    [(i.get("name"), (i.get("reviews") or {}).get("label")) for i in items])
+        # Match on first 2 words to handle name variations (e.g. "Hotel" vs "Resort")
+        match_words = match_name.split()[:2]
         item = next(
-            (i for i in items if match_name in i.get("name", "").lower()),
-            items[0],
+            (i for i in items if all(w in i.get("name", "").lower() for w in match_words)),
+            None,
         )
+        if item is None:
+            logger.warning("Expedia: no name match for '%s' in results, giving up", match_name)
+            return None, None
 
-        count = item.get("reviews.total")
-        label = (item.get("reviews.label") or "").lower()
+        reviews = item.get("reviews") or {}
+        count = reviews.get("total")
+        label = (reviews.get("label") or "").lower()
         score = LABEL_TO_SCORE.get(label)
+        if score is None:
+            logger.warning("Expedia: unrecognized label '%s' for hotel %s", label, hotel.name)
 
         if score is not None:
             return float(score), int(count) if count is not None else None
