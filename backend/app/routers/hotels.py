@@ -1,5 +1,3 @@
-import csv
-import io
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -10,7 +8,6 @@ from ..auth import get_current_user
 from ..database import get_db
 from ..models import Hotel, HotelGroupMembership, ReviewSnapshot, User
 from ..services.csv_import import import_csv
-from ..services.scoring import compute_scores
 
 router = APIRouter()
 

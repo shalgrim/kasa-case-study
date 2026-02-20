@@ -1,8 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.services.collectors.booking import collect_booking_reviews
 from app.services.collectors.expedia import collect_expedia_reviews
 

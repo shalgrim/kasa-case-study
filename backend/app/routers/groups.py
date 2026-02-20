@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..models import Hotel, HotelGroup, HotelGroupMembership, User
+from ..models import HotelGroup, HotelGroupMembership, User
 
 router = APIRouter()
 

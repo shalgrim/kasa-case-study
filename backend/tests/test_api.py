@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from app.models import User
+
 from tests.conftest import CSV_PATH, TestSession, count_queries
 
 
