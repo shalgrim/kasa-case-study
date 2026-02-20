@@ -16,11 +16,11 @@ def collect_booking_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     if not APIFY_TOKEN:
         return None, None
 
-    search_query = hotel.booking_name or hotel.name
+    search_query = hotel.booking_name or f"{hotel.name} {hotel.city} {hotel.state}"
     try:
         client = ApifyClient(APIFY_TOKEN)
         run = client.actor(ACTOR_ID).call(
-            run_input={"search": search_query, "maxItems": 1},
+            run_input={"search": search_query, "maxItems": 5},
             timeout_secs=120,
         )
 
@@ -28,9 +28,15 @@ def collect_booking_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         if not items:
             return None, None
 
-        item = items[0]
-        score = item.get("rating") or item.get("score")
-        count = item.get("reviewCount") or item.get("numberOfReviews")
+        # The search is geo-based and may return nearby properties.
+        # Try to find a name match first; fall back to first result.
+        match_name = (hotel.booking_name or hotel.name).lower()
+        item = next(
+            (i for i in items if match_name in i.get("name", "").lower()),
+            items[0],
+        )
+        score = item.get("rating")
+        count = item.get("reviews")
 
         if score is not None:
             return float(score), int(count) if count is not None else None

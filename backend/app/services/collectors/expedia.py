@@ -8,7 +8,7 @@ from ...models import Hotel
 logger = logging.getLogger(__name__)
 
 APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
-ACTOR_ID = "maxcopell/expedia-scraper"
+ACTOR_ID = "jupri/expedia-hotels"
 
 
 def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
@@ -16,7 +16,7 @@ def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     if not APIFY_TOKEN:
         return None, None
 
-    search_query = hotel.expedia_name or hotel.name
+    search_query = hotel.expedia_name or f"{hotel.name} {hotel.city} {hotel.state}"
     try:
         client = ApifyClient(APIFY_TOKEN)
         run = client.actor(ACTOR_ID).call(
