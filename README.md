@@ -33,12 +33,13 @@ The database is pre-loaded with ~100 hotels imported from a CSV of real Kasa pro
 
 To see live collection in action:
 
-1. Click any hotel from the hotel list (e.g. search for "Sea Crest")
-2. On the detail page, click **"Collect Live Reviews"**
-3. The system calls all four channel APIs and creates a **new snapshot** — the button may spin for 1-4 minutes depending on which API keys are configured
-4. The snapshot history table at the bottom shows both the original CSV import and the new live snapshot
+1. Add a new hotel: **Stoweflake Mountain Resort & Spa**, city **Stowe**, state **VT**
+   *(This hotel reliably appears in the top 5 results on both Booking.com and Expedia)*
+2. On the hotel detail page, click **"Collect Live Reviews"**
+3. The system calls all four channel APIs and creates a **new snapshot** — expect 30-90s for the Apify-backed channels (Booking.com + Expedia)
+4. The snapshot history table shows the newly collected scores alongside any prior data
 
-Live collection never overwrites existing data. Each collection creates a new snapshot row. If a channel's API key isn't configured or the lookup fails, that channel's scores carry forward from the previous snapshot.
+Live collection never overwrites existing data — each collection creates a new snapshot row. If a channel fails or an API key isn't configured, that channel returns `n/a` for the snapshot and is excluded from the weighted average.
 
 ### Groups and export
 
@@ -50,7 +51,7 @@ Live collection never overwrites existing data. Each collection creates a new sn
 
 - **Scoring model**: `backend/app/services/scoring.py` — normalization and weighted average logic
 - **Live collectors**: `backend/app/services/collectors/` — four collectors with different API patterns (REST, scraping), each returning `(score, count)` with graceful fallback
-- **Tests**: `backend/tests/` — 48 tests covering auth, CRUD, CSV import, scoring, collection, groups, admin, and hardening (N+1 queries, SQL injection via LIKE wildcards, pagination)
+- **Tests**: `backend/tests/` — 54 tests covering auth, CRUD, CSV import, scoring, collection, groups, admin, and hardening (N+1 queries, SQL injection via LIKE wildcards, pagination)
 - **Collector testing details**: `docs/live-testing-collectors.md` — documents the Apify actor schemas, field mappings, and gotchas discovered during live testing
 
 ## Tech Stack
@@ -62,7 +63,7 @@ Live collection never overwrites existing data. Each collection creates a new sn
 | Database | SQLite (dev), PostgreSQL (prod via Render) |
 | Deployment | Render (backend + DB), Vercel (frontend) |
 | Scraping | Apify (apify-client) for Booking.com + Expedia |
-| Testing | pytest (48 backend tests), in-memory SQLite with StaticPool |
+| Testing | pytest (54 backend tests), in-memory SQLite with StaticPool |
 
 ## Architecture
 
@@ -175,7 +176,11 @@ Admin:       POST /api/admin/reset (admin-only)
 
 ## Key Trade-offs
 
-- **Booking/Expedia via Apify** — Neither offers a free public API. I use Apify hosted scrapers which add latency (30-120s per actor run) and cost compute units, but avoid maintaining custom scrapers.
+- **Booking/Expedia via Apify** — Neither offers a free public API. I use Apify hosted scrapers which add latency (30-120s per actor run) and cost compute units, but avoid maintaining custom scrapers. Several non-obvious constraints discovered during live testing:
+  - **Booking.com autocomplete requires full state names** — "Stowe Vermont" works; "Stowe, VT" triggers an "Invalid destination type" error from the actor's autocomplete API
+  - **Booking.com returns vacation rentals by default** — the `accommodationType: 204` filter is required to limit results to hotels only; without it, top results are Airbnb-style properties
+  - **Geographic search, not hotel-name search** — both actors search a destination city/region and return nearby properties; hotel-name searches fail. The collector finds the target hotel by name-matching within results, using the first two words to handle common variations (e.g. "Hotel" vs "Resort" vs "Inn")
+  - **Not all hotels appear in top 5** — boutique or seasonally closed properties may not rank highly enough in a geographic search. A direct-URL input mode (Apify `startUrls`) would be more reliable but requires storing OTA-specific URLs per hotel
 - **Shared hotel model** — Hotels are global (not per-user) since they represent real properties. Groups provide per-user organization on top of the shared dataset.
 - **SQLite for dev, PostgreSQL for prod** — Keeps local development simple while using a production-grade database on Render. Tests use in-memory SQLite for speed and isolation.
 - **CSV parsing with column indices** — The source CSV has two header rows, merged cells, and inconsistent formatting. Hardcoded indices are more reliable than header-name matching for this specific file format.
