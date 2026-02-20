@@ -12,7 +12,7 @@ A web-based dashboard that aggregates hotel review data across Google, TripAdvis
 - **Browse and search** hotels in a sortable, color-coded table (green ≥8, yellow 6-8, red <6)
 - **Drill into hotel detail** with bar charts, radar charts, and snapshot history
 - **Organize hotels into groups** for portfolio comparison and CSV export
-- **Collect live reviews** from Google (SerpAPI) and TripAdvisor (Content API)
+- **Collect live reviews** from Google (SerpAPI), TripAdvisor (Content API), Booking.com (Apify), and Expedia (Apify)
 - **Create hotels manually** when they aren't in the CSV
 
 ## Tech Stack
@@ -23,7 +23,8 @@ A web-based dashboard that aggregates hotel review data across Google, TripAdvis
 | Frontend | React (TypeScript), Vite, Tailwind CSS, Recharts |
 | Database | SQLite (dev), PostgreSQL (prod via Render) |
 | Deployment | Render (backend + DB), Vercel (frontend) |
-| Testing | pytest (32 backend tests), in-memory SQLite with StaticPool |
+| Scraping | Apify (apify-client) for Booking.com + Expedia |
+| Testing | pytest (43 backend tests), in-memory SQLite with StaticPool |
 
 ## Architecture
 
@@ -33,7 +34,8 @@ A web-based dashboard that aggregates hotel review data across Google, TripAdvis
 │   (React)    │──────▶│  FastAPI  ──▶  PostgreSQL        │
 │              │  JWT  │     │                             │
 └─────────────┘       │     ├──▶ SerpAPI (Google)         │
-                      │     └──▶ TripAdvisor Content API  │
+                      │     ├──▶ TripAdvisor Content API  │
+                      │     └──▶ Apify (Booking/Expedia)  │
                       └──────────────────────────────────┘
 ```
 
@@ -56,7 +58,7 @@ Review scores arrive on different scales per channel:
 
 1. **CSV import** — The primary data source is a multi-format CSV with two header rows, comma-formatted numbers, and mixed `n/a` values. Parsing uses hardcoded column indices (more reliable than header matching given the messy format).
 
-2. **Live collection** — Google reviews via SerpAPI (knowledge graph → local results fallback) and TripAdvisor via their Content API (location search → detail lookup). Booking.com and Expedia lack public APIs; scraping was considered but deferred.
+2. **Live collection** — Google reviews via SerpAPI (knowledge graph → local results fallback), TripAdvisor via their Content API (location search → detail lookup), and Booking.com/Expedia via Apify hosted scrapers (apify-client). Apify actors run on-demand and return scores + review counts.
 
 3. **Snapshot history** — Each import or live collection creates a new `ReviewSnapshot` rather than overwriting, preserving the full history of score changes over time.
 
@@ -99,6 +101,7 @@ npx vite build       # production build
 | `FRONTEND_URL` | Yes (prod) | CORS origin (no trailing slash) |
 | `SERPAPI_KEY` | No | Enables Google live collection |
 | `TRIPADVISOR_KEY` | No | Enables TripAdvisor live collection |
+| `APIFY_TOKEN` | No | Enables Booking.com + Expedia live collection |
 
 ## API Endpoints
 
@@ -119,7 +122,7 @@ Admin:       POST /api/admin/reset (admin-only)
 
 ## Key Trade-offs
 
-- **No Booking/Expedia live collection** — Neither offers a public API. Scraping is fragile and potentially against ToS. These channels are fully supported via CSV import.
+- **Booking/Expedia via Apify** — Neither offers a free public API. We use Apify hosted scrapers which add latency (30-120s per actor run) and cost compute units, but avoid maintaining custom scrapers.
 - **Shared hotel model** — Hotels are global (not per-user) since they represent real properties. Groups provide per-user organization on top of the shared dataset.
 - **SQLite for dev, PostgreSQL for prod** — Keeps local development simple while using a production-grade database on Render. Tests use in-memory SQLite for speed and isolation.
 - **CSV parsing with column indices** — The source CSV has two header rows, merged cells, and inconsistent formatting. Hardcoded indices are more reliable than header-name matching for this specific file format.
@@ -148,10 +151,11 @@ The commit history is intentionally structured to show the progression of work a
 │   │   └── services/
 │   │       ├── csv_import.py    # CSV parser (column-index based)
 │   │       ├── scoring.py       # Normalization + weighted average
-│   │       └── collectors/      # Google (SerpAPI), TripAdvisor (Content API)
+│   │       └── collectors/      # Google (SerpAPI), TripAdvisor, Booking, Expedia (Apify)
 │   ├── tests/
 │   │   ├── conftest.py          # In-memory SQLite, fixtures, query counter
-│   │   └── test_api.py          # 32 integration tests
+│   │   ├── test_api.py          # 33 integration tests
+│   │   └── test_collectors.py  # 10 unit tests (Booking + Expedia)
 │   └── dev.sh                   # Dev helper (run, test, compile, etc.)
 ├── frontend/
 │   └── src/

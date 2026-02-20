@@ -66,8 +66,14 @@
    - Replace alert()/bare catch with inline error banners (all pages)
    - Log exceptions in Google/TripAdvisor collectors
    - TDD approach: tests written first, verified red, then fix, verified green
-8. **Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs
-9. **Cleanup** — Fix "Needs Attention" card; restrict hotel deletion to admins; group CSV export filename should reflect group name; hotel detail "Back to groups" breadcrumb; add Admin Reset button to dashboard UI; frontend tests
+8. ~~**Documentation** — README.md with architecture, data strategy, scoring, AI usage, trade-offs~~ **DONE**
+9. ~~**Booking/Expedia Live Collection** — Apify-based collectors for all 4 channels~~ **DONE** (43 tests)
+   - Added `apify-client` dependency
+   - Booking.com and Expedia collectors following existing Google/TripAdvisor pattern
+   - 10 new unit tests (test_collectors.py) + 1 integration test (all 4 channels mocked)
+   - Wired into reviews router with live-collection-with-fallback (replaces static carry-forward)
+   - Actor IDs are best-guess; field names use fallback lookups for resilience
+10. **Cleanup** — Fix "Needs Attention" card; restrict hotel deletion to admins; group CSV export filename should reflect group name; hotel detail "Back to groups" breadcrumb; add Admin Reset button to dashboard UI; frontend tests
 10. **CSV Upload Polish** (stretch, likely won't reach) — Fix misleading "imported" count; improve error handling for bad CSV files
 
 ### Cost philosophy

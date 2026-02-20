@@ -33,6 +33,6 @@ Case study for Kasa's AI Solutions Engineer role. A web-based "Reputation Dashbo
 
 ## Key Decisions
 - CSV parsing uses hardcoded column indices (more reliable than header matching given messy format)
-- Live collection only for Google (SerpAPI) and TripAdvisor (Content API); Booking/Expedia lack public APIs.
-  - We can revisit doing a scraping solution if time permits
+- Live collection for all four channels: Google (SerpAPI), TripAdvisor (Content API), Booking.com (Apify), and Expedia (Apify)
+  - Booking/Expedia use `apify-client` with hosted scrapers; shared `APIFY_TOKEN` env var
 - Each collection creates a new ReviewSnapshot to preserve history
