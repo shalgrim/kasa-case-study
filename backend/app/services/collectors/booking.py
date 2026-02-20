@@ -74,12 +74,13 @@ def collect_booking_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         )
         return None, None
 
-    # Booking autocomplete requires full state names (not abbreviations) and no comma.
+    # Search by hotel name so autocomplete resolves to the specific property.
+    search_name = hotel.booking_name or hotel.name
     if hotel.city and hotel.state:
         state_full = STATE_NAMES.get(hotel.state.upper(), hotel.state)
-        location_query = f"{hotel.city} {state_full}"
+        location_query = f"{search_name} {hotel.city} {state_full}"
     else:
-        location_query = hotel.name
+        location_query = search_name
     try:
         client = ApifyClient(APIFY_TOKEN)
         run = client.actor(ACTOR_ID).call(

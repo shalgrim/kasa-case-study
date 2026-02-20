@@ -103,7 +103,9 @@ class TestBookingCollector:
         ):
             collect_booking_reviews(hotel)
         call_args = mock_client.actor.return_value.call.call_args
-        assert call_args.kwargs["run_input"]["search"] == "Portland Oregon"
+        assert (
+            call_args.kwargs["run_input"]["search"] == "Fallback Hotel Portland Oregon"
+        )
 
     def test_falls_back_to_hotel_name_when_no_city(self):
         hotel = _make_hotel(
