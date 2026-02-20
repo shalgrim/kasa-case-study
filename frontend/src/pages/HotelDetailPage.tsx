@@ -63,7 +63,7 @@ export default function HotelDetailPage() {
     setCollectMsg('');
     try {
       const resp = await client.post(`/reviews/hotels/${id}/collect`);
-      const { weighted_average, channels_succeeded, channels_failed } = resp.data;
+      const { weighted_average, channels_failed } = resp.data;
       let msg = `New snapshot created (weighted avg: ${weighted_average})`;
       if (channels_failed?.length > 0) {
         msg += ` — Failed channels: ${channels_failed.join(', ')}`;
