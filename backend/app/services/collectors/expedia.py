@@ -28,11 +28,13 @@ def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         logger.warning("APIFY_TOKEN not set — skipping Expedia collection for %s", hotel.name)
         return None, None
 
-    search_query = hotel.expedia_name or f"{hotel.name} {hotel.city} {hotel.state}"
+    # The actor's location parameter is a geographic location (city/region), not a hotel name.
+    # Search by city+state so the actor can resolve the destination, then name-match.
+    location_query = f"{hotel.city}, {hotel.state}" if hotel.city and hotel.state else hotel.name
     try:
         client = ApifyClient(APIFY_TOKEN)
         run = client.actor(ACTOR_ID).call(
-            run_input={"location": [search_query], "limit": 5},
+            run_input={"location": [location_query], "limit": 5},
             timeout_secs=120,
         )
 
@@ -40,7 +42,7 @@ def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         if not items:
             return None, None
 
-        # Try to find a name match first; fall back to first result.
+        # The search returns nearby properties — find the right one by name.
         match_name = (hotel.expedia_name or hotel.name).lower()
         item = next(
             (i for i in items if match_name in i.get("name", "").lower()),

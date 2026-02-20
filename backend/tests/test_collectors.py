@@ -65,7 +65,7 @@ class TestBookingCollector:
             result = collect_booking_reviews(_make_hotel())
         assert result == (None, None)
 
-    def test_falls_back_to_hotel_name_with_location(self):
+    def test_searches_by_city_state(self):
         hotel = _make_hotel(booking_name=None, name="Fallback Hotel", city="Portland", state="OR")
         mock_client = MagicMock()
         mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
@@ -76,20 +76,20 @@ class TestBookingCollector:
              patch("app.services.collectors.booking.ApifyClient", return_value=mock_client):
             collect_booking_reviews(hotel)
         call_args = mock_client.actor.return_value.call.call_args
-        assert call_args.kwargs["run_input"]["search"] == "Fallback Hotel Portland OR"
+        assert call_args.kwargs["run_input"]["search"] == "Portland, OR"
 
-    def test_booking_name_overrides_location_fallback(self):
-        hotel = _make_hotel(booking_name="Exact Booking Name", name="Generic Hotel", city="Portland", state="OR")
+    def test_falls_back_to_hotel_name_when_no_city(self):
+        hotel = _make_hotel(booking_name=None, name="Fallback Hotel", city=None, state=None)
         mock_client = MagicMock()
         mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
         mock_client.dataset.return_value.iterate_items.return_value = [
-            {"name": "Exact Booking Name", "rating": 8.0, "reviews": 50}
+            {"name": "Fallback Hotel", "rating": 7.0, "reviews": 100}
         ]
         with patch("app.services.collectors.booking.APIFY_TOKEN", "tok"), \
              patch("app.services.collectors.booking.ApifyClient", return_value=mock_client):
             collect_booking_reviews(hotel)
         call_args = mock_client.actor.return_value.call.call_args
-        assert call_args.kwargs["run_input"]["search"] == "Exact Booking Name"
+        assert call_args.kwargs["run_input"]["search"] == "Fallback Hotel"
 
 
 # ---- Expedia collector ----
@@ -158,7 +158,7 @@ class TestExpediaCollector:
             result = collect_expedia_reviews(_make_hotel())
         assert result == (None, None)
 
-    def test_falls_back_to_hotel_name_with_location(self):
+    def test_searches_by_city_state(self):
         hotel = _make_hotel(expedia_name=None, name="Fallback Hotel", city="Portland", state="OR")
         mock_client = MagicMock()
         mock_client.actor.return_value.call.return_value = {"defaultDatasetId": "ds1"}
@@ -169,7 +169,7 @@ class TestExpediaCollector:
              patch("app.services.collectors.expedia.ApifyClient", return_value=mock_client):
             collect_expedia_reviews(hotel)
         call_args = mock_client.actor.return_value.call.call_args
-        assert call_args.kwargs["run_input"]["location"] == ["Fallback Hotel Portland OR"]
+        assert call_args.kwargs["run_input"]["location"] == ["Portland, OR"]
         assert call_args.kwargs["run_input"]["limit"] == 5
 
     def test_name_matching_picks_correct_hotel(self):

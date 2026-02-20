@@ -17,11 +17,13 @@ def collect_booking_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         logger.warning("APIFY_TOKEN not set — skipping Booking collection for %s", hotel.name)
         return None, None
 
-    search_query = hotel.booking_name or f"{hotel.name} {hotel.city} {hotel.state}"
+    # The actor's search parameter is a geographic location (city/region), not a hotel name.
+    # Search by city+state so the autocomplete can resolve the destination, then name-match.
+    location_query = f"{hotel.city}, {hotel.state}" if hotel.city and hotel.state else hotel.name
     try:
         client = ApifyClient(APIFY_TOKEN)
         run = client.actor(ACTOR_ID).call(
-            run_input={"search": search_query, "maxItems": 5},
+            run_input={"search": location_query, "maxItems": 5},
             timeout_secs=120,
         )
 
@@ -29,8 +31,7 @@ def collect_booking_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
         if not items:
             return None, None
 
-        # The search is geo-based and may return nearby properties.
-        # Try to find a name match first; fall back to first result.
+        # The search returns nearby properties — find the right one by name.
         match_name = (hotel.booking_name or hotel.name).lower()
         item = next(
             (i for i in items if match_name in i.get("name", "").lower()),

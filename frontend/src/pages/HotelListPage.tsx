@@ -52,15 +52,24 @@ export default function HotelListPage() {
   const [total, setTotal] = useState(0);
   const pageSize = 50;
 
-  const loadHotels = (p = page) => {
-    client.get('/hotels', { params: { page: p, page_size: pageSize } }).then(resp => {
+  const loadHotels = (p = page, q = search) => {
+    client.get('/hotels', { params: { page: p, page_size: pageSize, ...(q ? { search: q } : {}) } }).then(resp => {
       setHotels(resp.data.items);
       setTotal(resp.data.total);
       setLoading(false);
     });
   };
 
-  useEffect(() => { loadHotels(page); }, [page]);
+  useEffect(() => { loadHotels(page, search); }, [page]);
+
+  // Debounce search: reset to page 1 and reload when query changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      loadHotels(1, search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleCreate = async () => {
     if (!formData.name.trim()) return;
@@ -99,16 +108,7 @@ export default function HotelListPage() {
     }
   };
 
-  const filtered = hotels.filter(h => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return h.name.toLowerCase().includes(q) ||
-      (h.city?.toLowerCase().includes(q)) ||
-      (h.state?.toLowerCase().includes(q)) ||
-      (h.brand?.toLowerCase().includes(q));
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = [...hotels].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1;
     if (['name', 'city', 'state'].includes(sortKey)) {
       const av = (a[sortKey as keyof Hotel] as string) ?? '';
