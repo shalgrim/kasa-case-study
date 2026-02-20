@@ -103,6 +103,8 @@ The frontend is a static React SPA on Vercel. All API calls go through the FastA
 ## Future Work
 
 - **Collector reliability** — The Booking.com and Expedia collectors need significant improvement. Direct-URL scraping (accepting OTA listing URLs per hotel) would be more reliable than geographic search. Score cross-validation against known baselines would catch inaccurate data before it enters the system.
+- **Hotel-group integration on detail page** — The hotel detail page should show which groups a hotel belongs to and offer an "Add to Group" action, so users don't have to navigate away to manage membership.
+- **Interactive snapshot history** — Clicking a row in the snapshot history table should update the score cards and charts to reflect that point-in-time snapshot, not just the latest one. Currently the charts always show the most recent data.
 - **Frontend tests** — The backend has 54 tests; the frontend has none. React Testing Library or Playwright E2E tests would close this gap.
 - **Background collection** — Live collection runs synchronously in the request cycle. For group collection across many hotels, a background task system (Celery, ARQ) would prevent timeout issues.
 - **Admin-only hotel deletion** — Currently any authenticated user can delete any hotel (with confirmation). Should be restricted to admin role.
