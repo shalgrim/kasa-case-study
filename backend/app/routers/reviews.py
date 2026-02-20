@@ -19,32 +19,50 @@ def collect_hotel_reviews(hotel_id: int, db: Session = Depends(get_db), user: Us
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
 
-    # Get latest snapshot as base
-    latest = hotel.snapshots[0] if hotel.snapshots else None
-
     google_score, google_count = collect_google_reviews(hotel)
     booking_score, booking_count = collect_booking_reviews(hotel)
     expedia_score, expedia_count = collect_expedia_reviews(hotel)
     ta_score, ta_count = collect_tripadvisor_reviews(hotel)
 
+    # Track which channels returned live data
+    channels = {
+        "google": google_score is not None,
+        "booking": booking_score is not None,
+        "expedia": expedia_score is not None,
+        "tripadvisor": ta_score is not None,
+    }
+    succeeded = [ch for ch, ok in channels.items() if ok]
+    failed = [ch for ch, ok in channels.items() if not ok]
+
+    if not succeeded:
+        raise HTTPException(
+            status_code=502,
+            detail=f"All channels failed to collect live data. Check API keys and service availability. Failed: {', '.join(failed)}",
+        )
+
     snapshot = ReviewSnapshot(
         hotel_id=hotel.id,
         source="live",
-        google_score=google_score if google_score is not None else (latest.google_score if latest else None),
-        google_count=google_count if google_count is not None else (latest.google_count if latest else None),
-        booking_score=booking_score if booking_score is not None else (latest.booking_score if latest else None),
-        booking_count=booking_count if booking_count is not None else (latest.booking_count if latest else None),
-        expedia_score=expedia_score if expedia_score is not None else (latest.expedia_score if latest else None),
-        expedia_count=expedia_count if expedia_count is not None else (latest.expedia_count if latest else None),
-        tripadvisor_score=ta_score if ta_score is not None else (latest.tripadvisor_score if latest else None),
-        tripadvisor_count=ta_count if ta_count is not None else (latest.tripadvisor_count if latest else None),
+        google_score=google_score,
+        google_count=google_count,
+        booking_score=booking_score,
+        booking_count=booking_count,
+        expedia_score=expedia_score,
+        expedia_count=expedia_count,
+        tripadvisor_score=ta_score,
+        tripadvisor_count=ta_count,
     )
 
     compute_scores(snapshot)
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
-    return {"snapshot_id": snapshot.id, "weighted_average": snapshot.weighted_average}
+    return {
+        "snapshot_id": snapshot.id,
+        "weighted_average": snapshot.weighted_average,
+        "channels_succeeded": succeeded,
+        "channels_failed": failed,
+    }
 
 
 @router.post("/groups/{group_id}/collect")
@@ -56,28 +74,40 @@ def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: Us
     results = []
     for m in group.memberships:
         hotel = m.hotel
-        latest = hotel.snapshots[0] if hotel.snapshots else None
 
         google_score, google_count = collect_google_reviews(hotel)
         booking_score, booking_count = collect_booking_reviews(hotel)
         expedia_score, expedia_count = collect_expedia_reviews(hotel)
         ta_score, ta_count = collect_tripadvisor_reviews(hotel)
 
+        channels = {
+            "google": google_score is not None,
+            "booking": booking_score is not None,
+            "expedia": expedia_score is not None,
+            "tripadvisor": ta_score is not None,
+        }
+        succeeded = [ch for ch, ok in channels.items() if ok]
+
+        if not succeeded:
+            results.append({"hotel_id": hotel.id, "hotel_name": hotel.name, "status": "failed", "channels_succeeded": [], "channels_failed": list(channels.keys())})
+            continue
+
         snapshot = ReviewSnapshot(
             hotel_id=hotel.id,
             source="live",
-            google_score=google_score if google_score is not None else (latest.google_score if latest else None),
-            google_count=google_count if google_count is not None else (latest.google_count if latest else None),
-            booking_score=booking_score if booking_score is not None else (latest.booking_score if latest else None),
-            booking_count=booking_count if booking_count is not None else (latest.booking_count if latest else None),
-            expedia_score=expedia_score if expedia_score is not None else (latest.expedia_score if latest else None),
-            expedia_count=expedia_count if expedia_count is not None else (latest.expedia_count if latest else None),
-            tripadvisor_score=ta_score if ta_score is not None else (latest.tripadvisor_score if latest else None),
-            tripadvisor_count=ta_count if ta_count is not None else (latest.tripadvisor_count if latest else None),
+            google_score=google_score,
+            google_count=google_count,
+            booking_score=booking_score,
+            booking_count=booking_count,
+            expedia_score=expedia_score,
+            expedia_count=expedia_count,
+            tripadvisor_score=ta_score,
+            tripadvisor_count=ta_count,
         )
         compute_scores(snapshot)
         db.add(snapshot)
-        results.append({"hotel_id": hotel.id, "hotel_name": hotel.name})
+        failed = [ch for ch, ok in channels.items() if not ok]
+        results.append({"hotel_id": hotel.id, "hotel_name": hotel.name, "status": "ok", "channels_succeeded": succeeded, "channels_failed": failed})
 
     db.commit()
-    return {"collected": len(results), "hotels": results}
+    return {"collected": sum(1 for r in results if r["status"] == "ok"), "hotels": results}

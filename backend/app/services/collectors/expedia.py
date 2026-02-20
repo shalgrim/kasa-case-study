@@ -25,6 +25,7 @@ LABEL_TO_SCORE = {
 def collect_expedia_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     """Collect Expedia reviews via Apify scraper. Returns (score, count)."""
     if not APIFY_TOKEN:
+        logger.warning("APIFY_TOKEN not set — skipping Expedia collection for %s", hotel.name)
         return None, None
 
     search_query = hotel.expedia_name or f"{hotel.name} {hotel.city} {hotel.state}"

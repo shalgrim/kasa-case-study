@@ -13,6 +13,7 @@ SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 def collect_google_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     """Collect Google reviews via SerpAPI. Returns (score, count)."""
     if not SERPAPI_KEY:
+        logger.warning("SERPAPI_KEY not set — skipping Google collection for %s", hotel.name)
         return None, None
 
     query = f"{hotel.name} {hotel.city} {hotel.state} hotel"

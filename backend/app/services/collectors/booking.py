@@ -14,6 +14,7 @@ ACTOR_ID = "voyager/booking-scraper"
 def collect_booking_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     """Collect Booking.com reviews via Apify scraper. Returns (score, count)."""
     if not APIFY_TOKEN:
+        logger.warning("APIFY_TOKEN not set — skipping Booking collection for %s", hotel.name)
         return None, None
 
     search_query = hotel.booking_name or f"{hotel.name} {hotel.city} {hotel.state}"

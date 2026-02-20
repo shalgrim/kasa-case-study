@@ -14,6 +14,7 @@ BASE_URL = "https://api.content.tripadvisor.com/api/v1"
 def collect_tripadvisor_reviews(hotel: Hotel) -> tuple[float | None, int | None]:
     """Collect TripAdvisor reviews via Content API. Returns (score, count)."""
     if not TRIPADVISOR_KEY:
+        logger.warning("TRIPADVISOR_KEY not set — skipping TripAdvisor collection for %s", hotel.name)
         return None, None
 
     search_query = hotel.tripadvisor_name or hotel.name

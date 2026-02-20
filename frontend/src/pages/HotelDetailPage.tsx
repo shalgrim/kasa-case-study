@@ -63,11 +63,17 @@ export default function HotelDetailPage() {
     setCollectMsg('');
     try {
       const resp = await client.post(`/reviews/hotels/${id}/collect`);
-      setCollectMsg(`New snapshot created (weighted avg: ${resp.data.weighted_average})`);
+      const { weighted_average, channels_succeeded, channels_failed } = resp.data;
+      let msg = `New snapshot created (weighted avg: ${weighted_average})`;
+      if (channels_failed?.length > 0) {
+        msg += ` — Failed channels: ${channels_failed.join(', ')}`;
+      }
+      setCollectMsg(msg);
       client.get(`/hotels/${id}`).then(r => setHotel(r.data));
       client.get(`/hotels/${id}/history`).then(r => setHistory(r.data));
-    } catch {
-      setCollectMsg('Collection failed (API keys may not be configured)');
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      setCollectMsg(detail || 'Collection failed (API keys may not be configured)');
     }
     setCollecting(false);
   };
