@@ -545,6 +545,35 @@ def test_hotel_list_query_count(client, auth_token):
     assert len(queries) <= 5, f"Expected ≤5 queries, got {len(queries)}"
 
 
+def test_collect_hotel_all_four_channels(client, auth_token):
+    """Collect live reviews with all 4 channels mocked."""
+    hotel_ids = _import_csv(client, auth_token)
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    hotel_id = hotel_ids[0]
+
+    with patch("app.routers.reviews.collect_google_reviews", return_value=(4.5, 200)), \
+         patch("app.routers.reviews.collect_booking_reviews", return_value=(8.1, 300)), \
+         patch("app.routers.reviews.collect_expedia_reviews", return_value=(7.9, 250)), \
+         patch("app.routers.reviews.collect_tripadvisor_reviews", return_value=(4.0, 150)):
+        resp = client.post(f"/api/reviews/hotels/{hotel_id}/collect", headers=headers)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["weighted_average"] is not None
+
+    resp = client.get(f"/api/hotels/{hotel_id}/history", headers=headers)
+    history = resp.json()
+    live_snap = next(s for s in history if s["source"] == "live")
+    assert live_snap["google_score"] == 4.5
+    assert live_snap["google_count"] == 200
+    assert live_snap["booking_score"] == 8.1
+    assert live_snap["booking_count"] == 300
+    assert live_snap["expedia_score"] == 7.9
+    assert live_snap["expedia_count"] == 250
+    assert live_snap["tripadvisor_score"] == 4.0
+    assert live_snap["tripadvisor_count"] == 150
+
+
 def test_admin_reset_requires_admin(client, auth_token):
     """Non-admin user should get 403 on reset endpoint."""
     headers = {"Authorization": f"Bearer {auth_token}"}

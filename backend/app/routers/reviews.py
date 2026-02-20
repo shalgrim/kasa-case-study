@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user
 from ..database import get_db
 from ..models import Hotel, HotelGroup, ReviewSnapshot, User
+from ..services.collectors.booking import collect_booking_reviews
+from ..services.collectors.expedia import collect_expedia_reviews
 from ..services.collectors.google import collect_google_reviews
 from ..services.collectors.tripadvisor import collect_tripadvisor_reviews
 from ..services.scoring import compute_scores
@@ -21,6 +23,8 @@ def collect_hotel_reviews(hotel_id: int, db: Session = Depends(get_db), user: Us
     latest = hotel.snapshots[0] if hotel.snapshots else None
 
     google_score, google_count = collect_google_reviews(hotel)
+    booking_score, booking_count = collect_booking_reviews(hotel)
+    expedia_score, expedia_count = collect_expedia_reviews(hotel)
     ta_score, ta_count = collect_tripadvisor_reviews(hotel)
 
     snapshot = ReviewSnapshot(
@@ -28,10 +32,10 @@ def collect_hotel_reviews(hotel_id: int, db: Session = Depends(get_db), user: Us
         source="live",
         google_score=google_score if google_score is not None else (latest.google_score if latest else None),
         google_count=google_count if google_count is not None else (latest.google_count if latest else None),
-        booking_score=latest.booking_score if latest else None,
-        booking_count=latest.booking_count if latest else None,
-        expedia_score=latest.expedia_score if latest else None,
-        expedia_count=latest.expedia_count if latest else None,
+        booking_score=booking_score if booking_score is not None else (latest.booking_score if latest else None),
+        booking_count=booking_count if booking_count is not None else (latest.booking_count if latest else None),
+        expedia_score=expedia_score if expedia_score is not None else (latest.expedia_score if latest else None),
+        expedia_count=expedia_count if expedia_count is not None else (latest.expedia_count if latest else None),
         tripadvisor_score=ta_score if ta_score is not None else (latest.tripadvisor_score if latest else None),
         tripadvisor_count=ta_count if ta_count is not None else (latest.tripadvisor_count if latest else None),
     )
@@ -55,6 +59,8 @@ def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: Us
         latest = hotel.snapshots[0] if hotel.snapshots else None
 
         google_score, google_count = collect_google_reviews(hotel)
+        booking_score, booking_count = collect_booking_reviews(hotel)
+        expedia_score, expedia_count = collect_expedia_reviews(hotel)
         ta_score, ta_count = collect_tripadvisor_reviews(hotel)
 
         snapshot = ReviewSnapshot(
@@ -62,10 +68,10 @@ def collect_group_reviews(group_id: int, db: Session = Depends(get_db), user: Us
             source="live",
             google_score=google_score if google_score is not None else (latest.google_score if latest else None),
             google_count=google_count if google_count is not None else (latest.google_count if latest else None),
-            booking_score=latest.booking_score if latest else None,
-            booking_count=latest.booking_count if latest else None,
-            expedia_score=latest.expedia_score if latest else None,
-            expedia_count=latest.expedia_count if latest else None,
+            booking_score=booking_score if booking_score is not None else (latest.booking_score if latest else None),
+            booking_count=booking_count if booking_count is not None else (latest.booking_count if latest else None),
+            expedia_score=expedia_score if expedia_score is not None else (latest.expedia_score if latest else None),
+            expedia_count=expedia_count if expedia_count is not None else (latest.expedia_count if latest else None),
             tripadvisor_score=ta_score if ta_score is not None else (latest.tripadvisor_score if latest else None),
             tripadvisor_count=ta_count if ta_count is not None else (latest.tripadvisor_count if latest else None),
         )
