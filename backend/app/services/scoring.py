@@ -27,11 +27,17 @@ def compute_scores(snapshot: ReviewSnapshot) -> None:
         (snapshot.tripadvisor_normalized, snapshot.tripadvisor_count),
     ]
 
+    # For channels with a score but no review count, impute the count as the
+    # average of the counts from channels that do have both.
+    known_counts = [c for _, c in channels if c is not None and c > 0]
+    avg_count = round(sum(known_counts) / len(known_counts)) if known_counts else 1
+
     weighted_sum = 0.0
     total_count = 0
     for norm_score, count in channels:
-        if norm_score is not None and count is not None and count > 0:
-            weighted_sum += norm_score * count
-            total_count += count
+        if norm_score is not None:
+            effective_count = count if count is not None and count > 0 else avg_count
+            weighted_sum += norm_score * effective_count
+            total_count += effective_count
 
     snapshot.weighted_average = round(weighted_sum / total_count, 2) if total_count > 0 else None
