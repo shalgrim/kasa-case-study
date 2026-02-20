@@ -2,9 +2,12 @@
 
 > Case study submission for Kasa's AI Solutions Engineer role.
 
-**Live demo:** [kasa-case-study.vercel.app](https://kasa-case-study.vercel.app) (register with any email/password)
-**Source code:** This repo
-**Backend API:** [kasa-case-study.onrender.com](https://kasa-case-study.onrender.com/api/health) *(free tier — first request may take 30-60s to cold-start)*
+## Start Here: Demo and Links
+
+- **Recorded demo:** [Watch Me First](https://drive.google.com/file/d/1Rxbo248zSw1MxYB_2XvQ8nWXUR2iVJhM/view)
+- **Live demo:** [kasa-case-study.vercel.app](https://kasa-case-study.vercel.app) (register with any email/password)
+- **Source code:** This repo
+- **Backend API:** [kasa-case-study.onrender.com](https://kasa-case-study.onrender.com/api/health) *(free tier — first request may take 30-60s to cold-start)*
 
 ## Summary
 
@@ -12,9 +15,9 @@ A full-stack web application that aggregates hotel review data across Google, Tr
 
 The system normalizes scores to a common 0-10 scale, computes review-count-weighted averages, and preserves full snapshot history so scores can be tracked over time.
 
-**Built with:** Python/FastAPI, React/TypeScript, PostgreSQL, Tailwind CSS, Recharts
-**Tested with:** 54 backend tests (pytest) covering auth, CRUD, scoring, collection, groups, export, admin, and hardening
-**Built using:** Claude (Anthropic) — see [AI Usage](#ai-usage) below
+- **Built with:** Python/FastAPI, React/TypeScript, PostgreSQL, Tailwind CSS, Recharts
+- **Tested with:** 54 backend tests (pytest) covering auth, CRUD, scoring, collection, groups, export, admin, and hardening
+- **Built using:** Claude (Anthropic) — see [AI Usage](#ai-usage) below
 
 ## Quick Tour for Evaluators
 
